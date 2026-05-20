@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkNode — Dashboard</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']}}}};</script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    html,body,#root{height:100%;margin:0}
+    body{font-family:'Inter',-apple-system,sans-serif;background:#f1f5f9}
+    .submenu{overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1),opacity .22s ease}
+    .submenu.open{max-height:240px;opacity:1}.submenu.closed{max-height:0;opacity:0}
+    .chevron{transition:transform .25s cubic-bezier(.4,0,.2,1)}.chevron.rotated{transform:rotate(180deg)}
+    .lift{transition:transform .2s ease,box-shadow .2s ease}
+    .lift:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(14,165,233,.13),0 2px 8px rgba(0,0,0,.05)}
+    @keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.78)}}
+    .pulse{animation:dot-pulse 1.9s ease-in-out infinite}
+    .bar{transition:width 1s cubic-bezier(.4,0,.2,1)}
+    .g-text{background:linear-gradient(135deg,#0ea5e9 0%,#38bdf8 55%,#0284c7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+    .toggle-thumb{transition:left .2s ease}
+    .tooltip-wrap:hover .tooltip-box{opacity:1;pointer-events:auto}
+    .tooltip-box{opacity:0;pointer-events:none;transition:opacity .15s ease}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin{animation:spin 1s linear infinite}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .fade-in{animation:fadeIn .35s ease forwards}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useCallback, useEffect, useRef } = React;
+
+// ── SVG icon factory ──────────────────────────────────────────────────
+const MkSvg = (spec) => ({ size=18, className='' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {(spec.p||[]).map((d,i)=><path key={`p${i}`} d={d}/>)}
+    {(spec.c||[]).map(([cx,cy,r],i)=><circle key={`c${i}`} cx={cx} cy={cy} r={r}/>)}
+    {(spec.l||[]).map(([x1,y1,x2,y2],i)=><line key={`l${i}`} x1={x1} y1={y1} x2={x2} y2={y2}/>)}
+    {(spec.r||[]).map(([x,y,w,h,rx=0],i)=><rect key={`r${i}`} x={x} y={y} width={w} height={h} rx={rx}/>)}
+    {(spec.e||[]).map(([cx,cy,rx,ry],i)=><ellipse key={`e${i}`} cx={cx} cy={cy} rx={rx} ry={ry}/>)}
+  </svg>
+);
+const Home         = MkSvg({p:['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z','M9 22V12h6v10']});
+const Layers       = MkSvg({p:['M12 2L2 7l10 5 10-5-10-5z','M2 17l10 5 10-5','M2 12l10 5 10-5']});
+const Share2       = MkSvg({c:[[18,5,3],[6,12,3],[18,19,3]],l:[[8.59,13.51,15.42,17.49],[15.41,6.51,8.59,10.49]]});
+const Users        = MkSvg({p:['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'],c:[[9,7,4]]});
+const Settings     = MkSvg({l:[[4,3,4,13],[4,16,4,21],[12,3,12,7],[12,10,12,21],[20,3,20,15],[20,18,20,21]],r:[[1,13,6,3,1.5],[9,7,6,3,1.5],[17,15,6,3,1.5]]});
+const User         = MkSvg({p:['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'],c:[[12,7,4]]});
+const ChevronDown  = MkSvg({p:['M6 9l6 6 6-6']});
+const ChevronRight = MkSvg({p:['M9 18l6-6-6-6']});
+const Server       = MkSvg({r:[[2,2,20,8,2],[2,14,20,8,2]],l:[[6,6,6.01,6],[6,18,6.01,18]]});
+const Zap          = MkSvg({p:['M13 2L3 14h9l-1 8 10-12h-9l1-8z']});
+const DollarSign   = MkSvg({l:[[12,1,12,23]],p:['M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6']});
+const Wifi         = MkSvg({p:['M5 12.55a11 11 0 0 1 14.08 0','M1.42 9a16 16 0 0 1 21.16 0','M8.53 16.11a6 6 0 0 1 6.95 0'],c:[[12,20,1]]});
+const WifiOff      = MkSvg({p:['M1 1l22 22','M16.72 11.06A10.94 10.94 0 0 1 19 12.55','M5 12.55a10.94 10.94 0 0 1 5.17-2.39','M10.71 5.05A16 16 0 0 1 22.56 9','M1.42 9a15.91 15.91 0 0 1 4.7-2.88','M8.53 16.11a6 6 0 0 1 6.95 0'],c:[[12,20,1]]});
+const BarChart2    = MkSvg({l:[[18,20,18,10],[12,20,12,4],[6,20,6,14]]});
+const Clock        = MkSvg({c:[[12,12,10]],p:['M12 6v6l4 2']});
+const TrendingUp   = MkSvg({p:['M23 6l-9.5 9.5-5-5L1 18','M17 6h6v6']});
+const TrendingDown = MkSvg({p:['M23 18l-9.5-9.5-5 5L1 6','M17 18h6v-6']});
+const Square       = MkSvg({r:[[3,3,18,18,2]]});
+const Plus         = MkSvg({l:[[12,5,12,19],[5,12,19,12]]});
+const Bell         = MkSvg({p:['M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9','M13.73 21a2 2 0 0 1-3.46 0']});
+const Search       = MkSvg({c:[[11,11,8]],p:['M21 21l-4.35-4.35']});
+const LogOut       = MkSvg({p:['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4','M16 17l5-5-5-5','M21 12H9']});
+const Cpu          = MkSvg({r:[[4,4,16,16,2],[9,9,6,6,0]],l:[[9,1,9,4],[15,1,15,4],[9,20,9,23],[15,20,15,23],[1,9,4,9],[1,15,4,15],[20,9,23,9],[20,15,23,15]]});
+const Activity     = MkSvg({p:['M22 12h-4l-3 9L9 3l-3 9H2']});
+const Globe        = MkSvg({c:[[12,12,10]],l:[[2,12,22,12]],p:['M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z']});
+const Box          = MkSvg({p:['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z','M3.27 6.96L12 12.01l8.73-5.05','M12 22.08V12']});
+const CheckCircle  = MkSvg({c:[[12,12,10]],p:['M9 12l2 2 4-4']});
+const XCircle      = MkSvg({c:[[12,12,10]],p:['M15 9l-6 6','M9 9l6 6']});
+const Trash        = MkSvg({p:['M3 6h18','M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6','M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2']});
+const ArrowLeft    = MkSvg({p:['M19 12H5','M12 5l-7 7 7 7']});
+const ShieldCheck  = MkSvg({p:['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z','M9 12l2 2 4-4']});
+const Info         = MkSvg({c:[[12,12,10]],l:[[12,16,12,12]],p:['M12 8h.01']});
+const Download     = MkSvg({p:['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M7 10l5 5 5-5','M12 15V3']});
+const Terminal     = MkSvg({p:['M4 17l6-6-6-6','M12 19h8']});
+const Lock         = MkSvg({r:[[3,11,18,11,2]],p:['M7 11V7a5 5 0 0 1 10 0v4']});
+const Play         = MkSvg({p:['M5 3l14 9-14 9V3z']});
+const Monitor      = MkSvg({r:[[2,3,20,14,2]],p:['M8 21l8 0','M12 17v4']});
+
+// ── Mock data ─────────────────────────────────────────────────────────
+const WORKLOADS_INIT = [
+  {id:1,name:'LLM Fine-tuning v2',     type:'Training',  model:'GPT-4 Fine-tune',     gpus:4,gpuModel:'RTX 4090',  status:'running',progress:68,duration:'2h 14m',eta:'1h 02m',cost:4.20, region:'Seoul, KR'},
+  {id:2,name:'Image Generation Batch', type:'Inference', model:'Stable Diffusion XL', gpus:2,gpuModel:'RTX 3090',  status:'running',progress:35,duration:'48m',   eta:'1h 28m',cost:1.80, region:'Tokyo, JP'},
+  {id:3,name:'Data Preprocessing',     type:'Processing',model:'Custom Pipeline',      gpus:1,gpuModel:'A100 80GB',status:'pending',progress:0, duration:'—',     eta:'대기 중', cost:0,    region:'Singapore, SG'},
+  {id:4,name:'RL Agent Training',       type:'Training',  model:'PPO Algorithm',        gpus:8,gpuModel:'H100 SXM5',status:'stopped',progress:100,duration:'6h 30m',eta:'완료',   cost:28.50,region:'Seoul, KR'},
+  {id:5,name:'Vector DB Indexing',      type:'Inference', model:'Embedding Model',      gpus:2,gpuModel:'RTX 4080', status:'running',progress:89,duration:'3h 05m',eta:'22m',    cost:2.40, region:'Seoul, KR'},
+];
+const NODES = [
+  {id:1,name:'Node Alpha-01',gpuModel:'RTX 4090 × 4', utilization:92,todayEarnings:12.80,connections:3,uptime:'99.8%',status:'online', region:'Seoul, KR',    totalEarnings:1284},
+  {id:2,name:'Node Beta-02', gpuModel:'A100 80GB × 2',utilization:74,todayEarnings:9.40, connections:2,uptime:'97.2%',status:'online', region:'Tokyo, JP',    totalEarnings:942},
+  {id:3,name:'Node Gamma-03',gpuModel:'H100 NVL × 1', utilization:0, todayEarnings:0,    connections:0,uptime:'—',    status:'offline',region:'Singapore, SG',totalEarnings:520},
+];
+const TEMPLATES = {
+  'llm-train': {
+    label:'LLM 학습/파인튜닝', emoji:'🧠',
+    chip:'bg-violet-50 text-violet-700 border-violet-200',
+    card:'border-violet-300 bg-violet-50', dot:'bg-violet-500',
+    images:[
+      {id:'pytorch',     name:'PyTorch 2.3 + CUDA 12.1',      tag:'Official',  path:'pytorch/pytorch:2.3.0-cuda12.1-cudnn8-devel'},
+      {id:'hf-peft',     name:'HF Transformers + PEFT (LoRA)', tag:'Official',  path:'huggingface/transformers-pytorch-gpu:latest'},
+      {id:'axolotl',     name:'Axolotl',                       tag:'Community', path:'winglian/axolotl:main-latest'},
+      {id:'unsloth',     name:'Unsloth',                       tag:'Community', path:'unslothai/unsloth:latest'},
+      {id:'deepspeed',   name:'DeepSpeed',                     tag:'Official',  path:'deepspeed/deepspeed:latest'},
+      {id:'llamafactory',name:'Llama Factory',                 tag:'Community', path:'hiyouga/llamafactory:latest'},
+    ]
+  },
+  'llm-infer': {
+    label:'LLM 추론', emoji:'⚡',
+    chip:'bg-sky-50 text-sky-700 border-sky-200',
+    card:'border-sky-300 bg-sky-50', dot:'bg-sky-500',
+    images:[
+      {id:'vllm',    name:'vLLM',                           tag:'Official',  path:'vllm/vllm-openai:latest'},
+      {id:'tgi',     name:'TGI (Text Generation Inference)', tag:'Official',  path:'ghcr.io/huggingface/tgi:latest'},
+      {id:'ollama',  name:'Ollama',                          tag:'Official',  path:'ollama/ollama:latest'},
+      {id:'llamacpp',name:'llama.cpp',                       tag:'Community', path:'ghcr.io/ggerganov/llama.cpp:server'},
+      {id:'trtllm',  name:'TensorRT-LLM',                    tag:'Official',  path:'nvcr.io/nvidia/tritonserver:24.01'},
+    ]
+  },
+  'image-gen': {
+    label:'이미지 생성', emoji:'🎨',
+    chip:'bg-pink-50 text-pink-700 border-pink-200',
+    card:'border-pink-300 bg-pink-50', dot:'bg-pink-500',
+    images:[
+      {id:'sdwebui',   name:'Stable Diffusion WebUI', tag:'Community', path:'nexusgpu/sd-webui:latest'},
+      {id:'comfyui',   name:'ComfyUI',                tag:'Community', path:'nexusgpu/comfyui:latest'},
+      {id:'sdxl',      name:'SDXL',                   tag:'Platform',  path:'nexusgpu/sdxl:latest'},
+      {id:'flux',      name:'Flux',                   tag:'Platform',  path:'nexusgpu/flux:latest'},
+      {id:'dreambooth',name:'DreamBooth',              tag:'Community', path:'nexusgpu/dreambooth:latest'},
+    ]
+  },
+  'ml-general': {
+    label:'일반 ML', emoji:'📊',
+    chip:'bg-emerald-50 text-emerald-700 border-emerald-200',
+    card:'border-emerald-300 bg-emerald-50', dot:'bg-emerald-500',
+    images:[
+      {id:'pt23',   name:'PyTorch 2.3',               tag:'Official', path:'pytorch/pytorch:2.3.0-cuda12.1-cudnn8-devel'},
+      {id:'tf215',  name:'TensorFlow 2.15',            tag:'Official', path:'tensorflow/tensorflow:2.15.0-gpu'},
+      {id:'jax',    name:'JAX/Flax',                   tag:'Official', path:'nexusgpu/jax-flax:latest'},
+      {id:'jupyter',name:'Jupyter Lab + scikit-learn', tag:'Platform', path:'nexusgpu/jupyter-ml:latest'},
+    ]
+  },
+  'video-3d': {
+    label:'비디오/3D', emoji:'🎬',
+    chip:'bg-amber-50 text-amber-700 border-amber-200',
+    card:'border-amber-300 bg-amber-50', dot:'bg-amber-500',
+    images:[
+      {id:'blender',  name:'Blender 4.0',            tag:'Official',  path:'nexusgpu/blender:4.0'},
+      {id:'svd',      name:'Stable Video Diffusion', tag:'Community', path:'nexusgpu/svd:latest'},
+      {id:'animdiff', name:'AnimateDiff',             tag:'Community', path:'nexusgpu/animatediff:latest'},
+      {id:'gaussian', name:'3D Gaussian Splatting',  tag:'Research',  path:'nexusgpu/gaussian-splatting:latest'},
+    ]
+  },
+  'dev-env': {
+    label:'개발 환경', emoji:'💻',
+    chip:'bg-slate-100 text-slate-700 border-slate-300',
+    card:'border-slate-300 bg-slate-50', dot:'bg-slate-500',
+    images:[
+      {id:'vscode',  name:'VSCode Server + Python', tag:'Official', path:'nexusgpu/vscode-python:latest'},
+      {id:'rstudio', name:'RStudio Server',          tag:'Official', path:'rocker/ml-verse:latest'},
+    ]
+  },
+  'custom': {
+    label:'사용자 설정', emoji:'⚙️',
+    chip:'bg-slate-100 text-slate-600 border-slate-300',
+    card:'border-slate-300 bg-slate-50', dot:'bg-slate-400',
+    images:[]
+  },
+};
+const TAG_COLORS = {
+  Official: 'bg-sky-100 text-sky-700',
+  Community:'bg-violet-100 text-violet-700',
+  Platform: 'bg-emerald-100 text-emerald-700',
+  Research: 'bg-amber-100 text-amber-700',
+};
+const REGISTRIES = [
+  {id:'nvidia',label:'NVIDIA',    abbr:'NV', bg:'bg-green-600'},
+  {id:'github',label:'GitHub',    abbr:'GH', bg:'bg-gray-800'},
+  {id:'redhat',label:'Red Hat',   abbr:'RH', bg:'bg-red-600'},
+  {id:'docker',label:'Docker Hub',abbr:'DH', bg:'bg-blue-500'},
+  {id:'ecr',   label:'Amazon ECR',abbr:'ECR',bg:'bg-orange-500'},
+];
+const GPU_MODELS = [
+  {id:'rtx4090',label:'RTX 4090 (24 GB)',  price:0.40},
+  {id:'rtx3090',label:'RTX 3090 (24 GB)',  price:0.28},
+  {id:'a100',   label:'A100 80 GB',        price:1.20},
+  {id:'h100',   label:'H100 SXM5 (80 GB)', price:2.00},
+  {id:'rtx4080',label:'RTX 4080 (16 GB)',  price:0.32},
+];
+const AVAIL_NODES = [
+  {id:'n1',name:'LinkNode-Seoul-01',  spec:'RTX 4090 × 4', vram:'24GB×4',pricePerHour:1.60,rating:4.9,uptime:'99.8%',region:'Seoul, KR',   tags:['고속 NVLink']},
+  {id:'n2',name:'LinkNode-Tokyo-01',  spec:'A100 80GB × 2',vram:'80GB×2',pricePerHour:2.40,rating:4.7,uptime:'97.2%',region:'Tokyo, JP',   tags:['엔터프라이즈']},
+  {id:'n3',name:'HomeLab-Seoul-03',   spec:'RTX 4090 × 2', vram:'24GB×2',pricePerHour:0.80,rating:4.8,uptime:'98.5%',region:'Seoul, KR',   tags:[]},
+  {id:'n4',name:'CloudBox-SG-01',     spec:'RTX 3090 × 4', vram:'24GB×4',pricePerHour:0.60,rating:4.6,uptime:'96.1%',region:'Singapore, SG',tags:['저비용']},
+  {id:'n5',name:'HPC-Seoul-H100',     spec:'H100 SXM5 × 8',vram:'80GB×8',pricePerHour:4.00,rating:5.0,uptime:'99.9%',region:'Seoul, KR',   tags:['최고 성능']},
+  {id:'n6',name:'DevStation-KR-02',   spec:'RTX 4080 × 2', vram:'16GB×2',pricePerHour:0.70,rating:4.5,uptime:'95.0%',region:'Seoul, KR',   tags:[]},
+];
+
+// Monitoring mock data
+const MONITOR_HOURS = ['03','04','05','06','07','08','09','10','11','12','13','14'];
+const MONITOR_GPU   = [45,62,78,85,91,88,76,83,90,87,92,68];
+const MONITOR_CPU   = [22,35,48,52,61,58,44,51,63,57,65,42];
+const MONITOR_MEM   = [61,63,68,71,74,73,70,72,75,74,78,69];
+const CONTAINER_LOGS = [
+  {t:'14:18:45', level:'INFO',  msg:'Container started'},
+  {t:'14:18:47', level:'INFO',  msg:'Loading CUDA libraries...'},
+  {t:'14:18:52', level:'INFO',  msg:'CUDA 12.1 initialized on device 0'},
+  {t:'14:19:01', level:'INFO',  msg:'Loading model checkpoint...'},
+  {t:'14:19:38', level:'INFO',  msg:'Model loaded — 14.2 GB VRAM allocated'},
+  {t:'14:20:00', level:'INFO',  msg:'Training step    0/5000 — loss: 1.842  lr: 1e-4'},
+  {t:'14:20:30', level:'INFO',  msg:'Training step  100/5000 — loss: 0.932  lr: 1e-4'},
+  {t:'14:21:00', level:'INFO',  msg:'Training step  200/5000 — loss: 0.721  lr: 1e-4'},
+  {t:'14:22:00', level:'INFO',  msg:'Training step  400/5000 — loss: 0.542  lr: 9.8e-5'},
+  {t:'14:25:00', level:'INFO',  msg:'Training step  800/5000 — loss: 0.421  lr: 9.5e-5'},
+  {t:'14:30:12', level:'INFO',  msg:'Saving checkpoint at step 1000...'},
+  {t:'14:30:15', level:'INFO',  msg:'Checkpoint saved to /workspace/ckpt/step-1000.pt'},
+  {t:'14:35:00', level:'INFO',  msg:'Training step 1200/5000 — loss: 0.342  lr: 9.2e-5'},
+  {t:'14:40:00', level:'INFO',  msg:'Training step 1400/5000 — loss: 0.312  lr: 9.0e-5'},
+  {t:'14:45:00', level:'INFO',  msg:'Training step 1600/5000 — loss: 0.298  lr: 8.8e-5'},
+  {t:'14:50:00', level:'INFO',  msg:'Validation epoch 1 — val_loss: 0.287  val_acc: 0.921'},
+  {t:'14:55:00', level:'INFO',  msg:'Training step 1800/5000 — loss: 0.276  lr: 8.5e-5'},
+  {t:'15:00:00', level:'INFO',  msg:'Training step 2000/5000 — loss: 0.261  lr: 8.3e-5'},
+  {t:'15:00:01', level:'WARN',  msg:'GPU temperature: 83°C — consider cooling'},
+  {t:'15:05:00', level:'INFO',  msg:'Training step 2200/5000 — loss: 0.249  lr: 8.1e-5'},
+];
+
+// ── Shared primitives ─────────────────────────────────────────────────
+function StatusBadge({ status }) {
+  const cfg = {
+    running:{ bg:'bg-emerald-50',text:'text-emerald-700',border:'border-emerald-200',dot:'bg-emerald-500',label:'실행 중', pulse:true  },
+    pending:{ bg:'bg-amber-50',  text:'text-amber-700',  border:'border-amber-200',  dot:'bg-amber-500',  label:'대기 중', pulse:false },
+    stopped:{ bg:'bg-slate-50',  text:'text-slate-500',  border:'border-slate-200',  dot:'bg-slate-400',  label:'중지됨',  pulse:false },
+    online: { bg:'bg-sky-50',    text:'text-sky-700',    border:'border-sky-200',    dot:'bg-sky-500',    label:'온라인',  pulse:true  },
+    offline:{ bg:'bg-red-50',    text:'text-red-600',    border:'border-red-200',    dot:'bg-red-500',    label:'오프라인',pulse:false },
+  };
+  const c = cfg[status]??cfg.stopped;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.dot} ${c.pulse?'pulse':''}`}/>
+      {c.label}
+    </span>
+  );
+}
+function ProgressBar({ value, gradient='from-sky-400 to-sky-500' }) {
+  return (
+    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+      <div className={`h-full rounded-full bg-gradient-to-r ${gradient} bar`} style={{width:`${value}%`}}/>
+    </div>
+  );
+}
+function StatCard({ icon:Icon, title, value, sub, trend, trendUp, bgClass, iconClass }) {
+  return (
+    <div className="lift bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col gap-3 cursor-default">
+      <div className="flex items-center justify-between">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${bgClass}`}>
+          <Icon size={21} className={iconClass}/>
+        </div>
+        {trend!=null&&(
+          <span className={`flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${trendUp?'text-emerald-600 bg-emerald-50':'text-red-500 bg-red-50'}`}>
+            {trendUp?<TrendingUp size={11}/>:<TrendingDown size={11}/>}{trend}
+          </span>
+        )}
+      </div>
+      <div>
+        <p className="text-[26px] font-bold text-slate-800 leading-tight">{value}</p>
+        <p className="text-sm text-slate-500 mt-1">{title}</p>
+        {sub&&<p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+function PageHeader({ title, desc, action }) {
+  return (
+    <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm border-b border-slate-200/70 px-10 py-4 flex items-center justify-between">
+      <div>
+        <h1 className="text-xl font-bold text-slate-900 leading-tight">{title}</h1>
+        {desc&&<p className="text-sm text-slate-500 mt-0.5">{desc}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────
+const NAV_TOP = [
+  {id:'home',    label:'홈',      icon:Home},
+  {id:'workload',label:'워크로드',icon:Layers, children:[
+    {id:'workload-manage',label:'워크로드 관리',icon:Activity},
+    {id:'workload-create',label:'워크로드 생성',icon:Plus},
+  ]},
+  {id:'share',   label:'공유',    icon:Share2, children:[
+    {id:'share-manage',label:'노드 관리',icon:Server},
+    {id:'share-create',label:'노드 생성',icon:Plus},
+  ]},
+];
+const NAV_BOTTOM = [
+  {id:'community',label:'커뮤니티',icon:Users},
+  {id:'settings', label:'설정',    icon:Settings},
+  {id:'profile',  label:'프로필',  icon:User},
+];
+function NavItem({ item, activeTab, onSelect, expanded, onToggle }) {
+  const leafActive   = activeTab===item.id;
+  const parentActive = item.children?.some(c=>c.id===activeTab);
+  const hasKids      = !!item.children?.length;
+  return (
+    <div>
+      <button onClick={()=>hasKids?onToggle(item.id):onSelect(item.id)}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
+          ${leafActive?'bg-sky-500 text-white shadow-sm shadow-sky-200'
+            :parentActive?'bg-sky-50 text-sky-700'
+            :'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+        <item.icon size={18} className={`flex-shrink-0 ${leafActive?'text-white':parentActive?'text-sky-600':'text-slate-400 group-hover:text-slate-600'}`}/>
+        <span className="flex-1 text-left">{item.label}</span>
+        {hasKids&&<ChevronDown size={14} className={`flex-shrink-0 text-slate-400 chevron ${expanded?'rotated':''}`}/>}
+      </button>
+      {hasKids&&(
+        <div className={`submenu ${expanded?'open':'closed'} ml-4 mt-0.5 space-y-0.5`}>
+          {item.children.map(child=>(
+            <button key={child.id} onClick={()=>onSelect(child.id)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150
+                ${activeTab===child.id?'bg-sky-50 text-sky-600 font-semibold':'text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-medium'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeTab===child.id?'bg-sky-500':'bg-slate-300'}`}/>
+              <child.icon size={13} className="flex-shrink-0 opacity-70"/>
+              {child.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function Sidebar({ activeTab, onSelect, expanded, onToggle }) {
+  return (
+    <aside className="w-64 h-full bg-white border-r border-slate-100 flex flex-col flex-shrink-0">
+      <div className="px-5 py-5 border-b border-slate-100 flex items-center gap-3">
+        <div className="w-9 h-9 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center shadow-sm shadow-sky-200">
+          <Zap size={17} className="text-white"/>
+        </div>
+        <span className="text-[18px] font-bold text-slate-900 tracking-tight">Link<span className="g-text">Node</span></span>
+      </div>
+      <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">메뉴</p>
+        {NAV_TOP.map(item=>(
+          <NavItem key={item.id} item={item} activeTab={activeTab} onSelect={onSelect} expanded={!!expanded[item.id]} onToggle={onToggle}/>
+        ))}
+      </nav>
+      <div className="mx-4 border-t border-slate-100"/>
+      <nav className="px-3 py-3 space-y-0.5">
+        {NAV_BOTTOM.map(item=>(
+          <NavItem key={item.id} item={item} activeTab={activeTab} onSelect={onSelect} expanded={false} onToggle={()=>{}}/>
+        ))}
+      </nav>
+      <div className="px-4 py-4 border-t border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-400 to-violet-500 flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-xs font-bold">EJ</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-800 truncate">이은재</p>
+            <p className="text-xs text-slate-400">Pro Plan</p>
+          </div>
+          <button className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100">
+            <LogOut size={15}/>
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ── Home View ─────────────────────────────────────────────────────────
+function WorkloadRow({ w }) {
+  const barGrad = w.status==='running'?'from-sky-400 to-sky-500':'from-amber-400 to-amber-500';
+  return (
+    <div className="flex items-center gap-4 px-4 py-4 hover:bg-slate-50/80 transition-colors rounded-xl cursor-pointer group">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
+          <Layers size={15} className="text-sky-500"/>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-800 truncate group-hover:text-sky-600 transition-colors">{w.name}</p>
+          <p className="text-xs text-slate-400">{w.type} · {w.gpuModel}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 text-xs text-slate-500 w-18 flex-shrink-0">
+        <Cpu size={12} className="text-sky-400"/>
+        <span className="font-medium ml-0.5">{w.gpus}× GPU</span>
+      </div>
+      <div className="w-22 flex-shrink-0"><StatusBadge status={w.status}/></div>
+      <div className="w-34 flex-shrink-0">
+        {w.status!=='stopped'?(
+          <div>
+            <div className="flex justify-between text-[11px] text-slate-400 mb-1.5">
+              <span>{w.progress}%</span>
+              <span className="text-sky-500 font-medium">{w.eta}</span>
+            </div>
+            <ProgressBar value={w.progress} gradient={barGrad}/>
+          </div>
+        ):(
+          <span className="text-xs text-slate-400 flex items-center gap-1">
+            <CheckCircle size={12} className="text-emerald-400"/>완료됨
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1 text-xs text-slate-500 w-16 flex-shrink-0">
+        <Clock size={12}/><span>{w.duration}</span>
+      </div>
+      <div className="text-sm font-bold text-slate-700 w-14 text-right flex-shrink-0">${w.cost.toFixed(2)}</div>
+    </div>
+  );
+}
+function NodeWidget({ node }) {
+  const online = node.status==='online';
+  const utilGrad = node.utilization>70?'from-sky-400 to-sky-500':node.utilization>30?'from-amber-400 to-amber-500':'from-slate-200 to-slate-300';
+  return (
+    <div className="lift bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className={`px-6 py-5 ${online?'bg-gradient-to-r from-sky-500 to-sky-600':'bg-slate-400'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Server size={16} className="text-white/90"/>
+            <span className="text-white font-bold text-sm">{node.name}</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+            {online?<Wifi size={11}/>:<WifiOff size={11}/>}
+            {online?'온라인':'오프라인'}
+          </div>
+        </div>
+        <p className="text-sky-100 text-xs mt-1.5">{node.gpuModel}</p>
+      </div>
+      <div className="px-6 py-5">
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-medium text-slate-500">GPU 가동률</span>
+            <span className="text-sm font-bold text-slate-800">{node.utilization}%</span>
+          </div>
+          <ProgressBar value={node.utilization} gradient={utilGrad}/>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-slate-50 rounded-xl p-3.5">
+            <p className="text-[11px] text-slate-400 mb-1">오늘 수익</p>
+            <p className="text-base font-bold text-slate-800">{online?`$${node.todayEarnings.toFixed(2)}`:'—'}</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3.5">
+            <p className="text-[11px] text-slate-400 mb-1">연결 수</p>
+            <p className="text-base font-bold text-slate-800">{online?node.connections:'—'}</p>
+          </div>
+          <div className="bg-sky-50 rounded-xl p-3.5">
+            <p className="text-[11px] text-slate-400 mb-1">누적 수익</p>
+            <p className="text-base font-bold text-sky-600">${node.totalEarnings}</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3.5">
+            <p className="text-[11px] text-slate-400 mb-1">업타임</p>
+            <p className="text-base font-bold text-slate-800">{node.uptime}</p>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
+          <Globe size={12}/><span>{node.region}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+function HomeView({ onNavigate, workloads }) {
+  const running     = workloads.filter(w=>w.status==='running');
+  const totalGPUs   = running.reduce((s,w)=>s+w.gpus,0);
+  const totalCost   = workloads.reduce((s,w)=>s+w.cost,0);
+  const totalEarning= NODES.reduce((s,n)=>s+n.totalEarnings,0);
+  return (
+    <main className="flex-1 overflow-y-auto">
+      <PageHeader title="대시보드" desc="안녕하세요, 이은재님! 오늘도 좋은 하루 되세요."
+        action={
+          <div className="flex items-center gap-3">
+            <button className="w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:border-sky-300 hover:text-sky-500 transition-all shadow-sm">
+              <Search size={16}/>
+            </button>
+            <button className="relative w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:border-sky-300 hover:text-sky-500 transition-all shadow-sm">
+              <Bell size={16}/>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-sky-500 rounded-full text-[9px] text-white flex items-center justify-center font-bold">3</span>
+            </button>
+            <button onClick={()=>onNavigate('workload-create')}
+              className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm shadow-sky-200">
+              <Plus size={15}/>새 워크로드
+            </button>
+          </div>
+        }
+      />
+      <div className="px-10 py-7 space-y-7">
+        <div className="grid grid-cols-4 gap-5">
+          <StatCard icon={Cpu}        title="활성 GPU"     value={`${totalGPUs}개`}          sub={`${running.length}개 작업 실행 중`} trend="+2"    trendUp={true}  bgClass="bg-sky-50"     iconClass="text-sky-500"/>
+          <StatCard icon={Activity}   title="전체 사용량"  value="78.4%"                      sub="평균 GPU 활용률"                     trend="+5.2%" trendUp={true}  bgClass="bg-violet-50"  iconClass="text-violet-500"/>
+          <StatCard icon={DollarSign} title="이번 달 비용" value={`$${totalCost.toFixed(2)}`} sub="전월 대비 절감"                      trend="-12%"  trendUp={false} bgClass="bg-amber-50"   iconClass="text-amber-500"/>
+          <StatCard icon={TrendingUp} title="공유 수익"    value={`$${totalEarning}`}         sub="이번 달 누적"                        trend="+8.4%" trendUp={true}  bgClass="bg-emerald-50" iconClass="text-emerald-500"/>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
+                <Layers size={15} className="text-sky-500"/>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">내 워크로드 현황</h2>
+                <p className="text-xs text-slate-400 mt-0.5">총 {workloads.length}개 · {running.length}개 실행 중</p>
+              </div>
+            </div>
+            <button onClick={()=>onNavigate('workload-manage')} className="flex items-center gap-1 text-xs text-sky-500 hover:text-sky-600 font-bold transition-colors">
+              전체 보기<ChevronRight size={13}/>
+            </button>
+          </div>
+          <div className="flex items-center gap-4 px-8 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="flex-1">워크로드</div>
+            <div className="w-18 flex-shrink-0">GPU</div>
+            <div className="w-22 flex-shrink-0">상태</div>
+            <div className="w-34 flex-shrink-0">진행률</div>
+            <div className="w-16 flex-shrink-0">시간</div>
+            <div className="w-14 flex-shrink-0 text-right">비용</div>
+          </div>
+          <div className="px-4 pb-4 space-y-0.5">
+            {workloads.map(w=><WorkloadRow key={w.id} w={w}/>)}
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
+                <Server size={15} className="text-sky-500"/>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">공유 노드 현황</h2>
+                <p className="text-xs text-slate-400 mt-0.5">총 {NODES.length}개 · {NODES.filter(n=>n.status==='online').length}개 온라인</p>
+              </div>
+            </div>
+            <button onClick={()=>onNavigate('share-create')} className="flex items-center gap-1 text-xs text-sky-500 hover:text-sky-600 font-bold transition-colors">
+              <Plus size={13}/>노드 추가
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-5">
+            {NODES.map(n=><NodeWidget key={n.id} node={n}/>)}
+          </div>
+        </div>
+        <div className="h-2"/>
+      </div>
+    </main>
+  );
+}
+
+// ── Workload Monitor View ─────────────────────────────────────────────
+function MiniBarChart({ data, color }) {
+  const max = 100;
+  const H   = 80;
+  return (
+    <div className="flex items-end gap-0.5" style={{height:H}}>
+      {data.map((v,i)=>(
+        <div key={i} className={`flex-1 rounded-sm ${color}`}
+             style={{height:`${Math.max(4, Math.round(v/max*H))}px`}}/>
+      ))}
+    </div>
+  );
+}
+function WorkloadMonitorView({ workload, onBack }) {
+  const logRef = useRef(null);
+  useEffect(()=>{
+    if(logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  },[]);
+  const gpuNow = MONITOR_GPU[MONITOR_GPU.length-1];
+  const cpuNow = MONITOR_CPU[MONITOR_CPU.length-1];
+  const memNow = MONITOR_MEM[MONITOR_MEM.length-1];
+  return (
+    <main className="flex-1 overflow-y-auto fade-in">
+      <PageHeader
+        title={workload?.name || '워크로드 모니터링'}
+        desc="시간별 리소스 사용량 및 컨테이너 로그"
+        action={
+          <button onClick={onBack}
+            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-sky-600 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-300 transition-all">
+            <ArrowLeft size={15}/>목록으로
+          </button>
+        }
+      />
+      <div className="px-10 py-7 space-y-6">
+        {/* Workload info bar */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-4 flex items-center gap-6">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center flex-shrink-0">
+            <Layers size={18} className="text-sky-500"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-800">{workload?.name}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{workload?.model} · {workload?.gpuModel} × {workload?.gpus}</p>
+          </div>
+          <StatusBadge status={workload?.status||'running'}/>
+          <div className="flex items-center gap-4 text-xs text-slate-500 border-l border-slate-100 pl-6">
+            <span><span className="text-slate-400">실행 시간</span> <strong className="text-slate-700">{workload?.duration||'—'}</strong></span>
+            <span><span className="text-slate-400">ETA</span> <strong className="text-sky-600">{workload?.eta||'—'}</strong></span>
+            <span><span className="text-slate-400">비용</span> <strong className="text-slate-700">${(workload?.cost||0).toFixed(2)}</strong></span>
+          </div>
+        </div>
+
+        {/* Resource charts */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
+              <BarChart2 size={15} className="text-sky-500"/>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">시간별 리소스 사용량</h3>
+              <p className="text-xs text-slate-400">최근 12시간</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-8">
+            {[
+              {label:'GPU 사용률', now:gpuNow, data:MONITOR_GPU, color:'bg-sky-400',     textColor:'text-sky-600',     bg:'bg-sky-50'},
+              {label:'CPU 사용률', now:cpuNow, data:MONITOR_CPU, color:'bg-violet-400',  textColor:'text-violet-600',  bg:'bg-violet-50'},
+              {label:'메모리',     now:memNow, data:MONITOR_MEM, color:'bg-emerald-400', textColor:'text-emerald-600', bg:'bg-emerald-50'},
+            ].map(({label,now,data,color,textColor,bg})=>(
+              <div key={label}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-600">{label}</span>
+                  <span className={`text-base font-bold ${textColor}`}>{now}%</span>
+                </div>
+                <div className={`${bg} rounded-xl p-3`}>
+                  <MiniBarChart data={data} color={color}/>
+                  <div className="flex justify-between mt-2">
+                    {MONITOR_HOURS.filter((_,i)=>i%3===0||i===MONITOR_HOURS.length-1).map(h=>(
+                      <span key={h} className="text-[9px] text-slate-400">{h}:00</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-between mt-2 text-[10px] text-slate-400">
+                  <span>최소 {Math.min(...data)}%</span>
+                  <span>평균 {Math.round(data.reduce((s,v)=>s+v,0)/data.length)}%</span>
+                  <span>최대 {Math.max(...data)}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Container logs */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
+                <Terminal size={15} className="text-emerald-400"/>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">컨테이너 로그</h3>
+                <p className="text-xs text-slate-400">{CONTAINER_LOGS.length}개 항목</p>
+              </div>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse"/>실시간
+            </span>
+          </div>
+          <div ref={logRef} className="bg-slate-900 rounded-xl p-4 h-72 overflow-y-auto font-mono text-xs leading-6 space-y-0.5">
+            {CONTAINER_LOGS.map((log,i)=>(
+              <div key={i} className="flex gap-3">
+                <span className="text-slate-500 flex-shrink-0">{log.t}</span>
+                <span className={`flex-shrink-0 font-bold w-9 ${log.level==='WARN'?'text-amber-400':log.level==='ERROR'?'text-red-400':'text-sky-400'}`}>{log.level}</span>
+                <span className={log.level==='WARN'?'text-amber-300':log.level==='ERROR'?'text-red-300':'text-slate-200'}>{log.msg}</span>
+              </div>
+            ))}
+            <div className="flex gap-3">
+              <span className="text-slate-500 flex-shrink-0">15:10:00</span>
+              <span className="text-sky-400 flex-shrink-0 font-bold w-9">INFO</span>
+              <span className="text-slate-200">Training step 2400/5000 — loss: 0.237  lr: 7.9e-5 <span className="inline-block w-2 h-3.5 bg-emerald-400 align-middle pulse"/></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ── Workload Manage ───────────────────────────────────────────────────
+function WorkloadManageView({ onNavigate, workloads, onSelectWorkload }) {
+  const [filter,setFilter] = useState('all');
+  const tabs = [
+    {key:'all',    label:'전체',   count:workloads.length},
+    {key:'running',label:'실행 중',count:workloads.filter(w=>w.status==='running').length},
+    {key:'pending',label:'대기 중',count:workloads.filter(w=>w.status==='pending').length},
+    {key:'stopped',label:'중지됨', count:workloads.filter(w=>w.status==='stopped').length},
+  ];
+  const list = filter==='all'?workloads:workloads.filter(w=>w.status===filter);
+  return (
+    <main className="flex-1 overflow-y-auto">
+      <PageHeader title="워크로드 관리" desc="실행 중인 GPU 워크로드를 모니터링하고 제어하세요"
+        action={<button onClick={()=>onNavigate('workload-create')} className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm shadow-sky-200"><Plus size={15}/>새 워크로드</button>}
+      />
+      <div className="px-10 py-7">
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit mb-6 shadow-sm">
+          {tabs.map(t=>(
+            <button key={t.key} onClick={()=>setFilter(t.key)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${filter===t.key?'bg-sky-500 text-white shadow-sm':'text-slate-500 hover:text-slate-700'}`}>
+              {t.label}<span className={`ml-1.5 text-[11px] ${filter===t.key?'text-sky-100':'text-slate-400'}`}>{t.count}</span>
+            </button>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {list.map(w=>{
+            const barGrad = w.status==='running'?'from-sky-400 to-sky-500':'from-amber-400 to-amber-500';
+            return (
+              <div key={w.id}
+                onClick={()=>onSelectWorkload(w)}
+                className="lift bg-white rounded-2xl border border-slate-100 shadow-sm p-6 cursor-pointer group hover:border-sky-200 transition-all">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center flex-shrink-0 group-hover:bg-sky-100 transition-colors">
+                      <Layers size={18} className="text-sky-500"/>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-base font-bold text-slate-800 group-hover:text-sky-600 transition-colors">{w.name}</span>
+                        <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{w.type}</span>
+                      </div>
+                      <p className="text-sm text-slate-500 mt-0.5">{w.model} · {w.gpuModel} × {w.gpus}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <StatusBadge status={w.status}/>
+                    <span className="text-xs text-sky-500 font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <Monitor size={12}/>모니터링
+                    </span>
+                    {w.status==='running'&&(
+                      <button onClick={e=>{e.stopPropagation();}} className="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:border-red-300 hover:text-red-500 transition-all">
+                        <Square size={14}/>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {w.status!=='stopped'&&(
+                  <div className="mt-4">
+                    <div className="flex justify-between text-xs text-slate-500 mb-2">
+                      <span>진행률: <strong className="text-slate-700">{w.progress}%</strong></span>
+                      <span>예상 완료: <strong className="text-sky-500">{w.eta}</strong></span>
+                    </div>
+                    <ProgressBar value={w.progress} gradient={barGrad}/>
+                  </div>
+                )}
+                <div className="flex items-center gap-7 mt-5 pt-4 border-t border-slate-100">
+                  {[{Ic:Clock,val:w.duration,label:'실행 시간'},{Ic:Globe,val:w.region,label:'리전'},{Ic:DollarSign,val:`$${w.cost.toFixed(2)}`,label:'비용',sky:true}].map(({Ic,val,label,sky})=>(
+                    <div key={label} className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Ic size={13} className="text-slate-400"/>
+                      <span>{label}: <strong className={sky?'text-sky-600':'text-slate-700'}>{val}</strong></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ── Form helpers ──────────────────────────────────────────────────────
+const IC = "w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition-all placeholder-slate-300 bg-white";
+function FSection({ icon:Icon, title, children }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
+      <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+        <Icon size={15} className="text-sky-500"/>{title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+function FField({ label, children, hint }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-600 mb-2">{label}</label>
+      {children}
+      {hint&&<p className="text-xs text-slate-400 mt-1.5">{hint}</p>}
+    </div>
+  );
+}
+function FSel({ value, onChange, opts }) {
+  return (
+    <select value={value} onChange={e=>onChange(e.target.value)} className={IC}>
+      {opts.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+    </select>
+  );
+}
+
+// ── Node Select Modal ─────────────────────────────────────────────────
+function NodeSelectModal({ onSelect, onClose, chosenId }) {
+  const stars = (r) => '★'.repeat(Math.floor(r)) + (r%1>=0.5?'½':'');
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[80vh]">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">노드 선택</h2>
+            <p className="text-xs text-slate-400 mt-0.5">현재 공유 중인 GPU 노드 목록</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all">
+            <XCircle size={18}/>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {AVAIL_NODES.map(n=>{
+            const chosen = chosenId===n.id;
+            return (
+              <button key={n.id} onClick={()=>{ onSelect(n); onClose(); }}
+                className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all hover:border-sky-300
+                  ${chosen?'border-sky-500 bg-sky-50':'border-slate-100 hover:bg-slate-50'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${chosen?'bg-sky-500':'bg-slate-100'}`}>
+                  <Server size={17} className={chosen?'text-white':'text-slate-500'}/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-slate-800">{n.name}</span>
+                    {n.tags.map(t=><span key={t} className="text-[10px] font-semibold bg-sky-50 text-sky-600 px-2 py-0.5 rounded-full border border-sky-200">{t}</span>)}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{n.spec} · {n.vram} · {n.region}</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[11px] text-amber-500 font-medium">{stars(n.rating)} {n.rating}</span>
+                    <span className="text-[11px] text-slate-400">업타임 {n.uptime}</span>
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-base font-bold text-sky-600">${n.pricePerHour}</p>
+                  <p className="text-[11px] text-slate-400">/hr</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="px-6 py-4 border-t border-slate-100 flex justify-end">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Workload Create View ──────────────────────────────────────────────
+function WorkloadCreateView({ onNavigate, onCreateWorkload }) {
+  const [step, setStep]   = useState('template');
+  const [tKey, setTKey]   = useState(null);
+  const [selImg, setSelImg] = useState(null);
+  const [formTab, setFormTab] = useState('basic');
+  const [showModal, setShowModal] = useState(false);
+  const [imgStatus, setImgStatus] = useState(null);
+
+  const [form, setForm] = useState({
+    name:'', desc:'',
+    registry:'docker', imagePath:'', port:'8080', cmd:'', envVars:[{k:'',v:''}],
+    gpuModel:'rtx4090', gpuCount:1,
+    fastFailover:false, nodeMode:'auto', chosenNode:null,
+    minCuda:'12.1',
+  });
+  const set = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const tData   = tKey ? TEMPLATES[tKey] : null;
+  const gpuPrice = GPU_MODELS.find(g=>g.id===form.gpuModel)?.price || 0.40;
+  const estPrice = form.nodeMode==='manual'&&form.chosenNode
+    ? form.chosenNode.pricePerHour
+    : gpuPrice * form.gpuCount;
+
+  const handleCreate = () => {
+    const gpuLabel = GPU_MODELS.find(g=>g.id===form.gpuModel)?.label || 'GPU';
+    onCreateWorkload({
+      id: Date.now(),
+      name: form.name || '새 워크로드',
+      type: tKey ? (TEMPLATES[tKey]?.label || '사용자 설정') : '사용자 설정',
+      model: selImg?.name || form.imagePath || '사용자 이미지',
+      gpus: form.gpuCount,
+      gpuModel: gpuLabel.split(' (')[0],
+      status: 'pending',
+      progress: 0,
+      duration: '—',
+      eta: '대기 중',
+      cost: 0,
+      region: form.chosenNode?.region || 'Seoul, KR',
+    });
+    onNavigate('workload-manage');
+  };
+
+  // ── Step 1: Template ────────────────────────────────────────────────
+  if (step==='template') {
+    const keys = Object.keys(TEMPLATES);
+    return (
+      <main className="flex-1 overflow-y-auto">
+        <PageHeader title="워크로드 생성" desc="사용할 환경 유형을 선택하세요"/>
+        <div className="px-10 py-8">
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-slate-800 mb-1">어떤 작업에 이용하시나요?</h2>
+            <p className="text-sm text-slate-500">플랫폼 큐레이션 이미지 또는 직접 설정 중 선택하세요</p>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            {keys.filter(k=>k!=='custom').map(k=>{
+              const t = TEMPLATES[k];
+              return (
+                <button key={k} onClick={()=>{ setTKey(k); setStep('image'); }}
+                  className="lift bg-white border-2 border-slate-100 hover:border-sky-300 rounded-2xl p-6 text-left flex flex-col gap-3 transition-all group shadow-sm">
+                  <span className="text-3xl">{t.emoji}</span>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 group-hover:text-sky-600 transition-colors">{t.label}</p>
+                    <p className="text-xs text-slate-400 mt-1">{t.images.length}개 이미지</p>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full ${t.dot}`}/>
+                </button>
+              );
+            })}
+            <button onClick={()=>{ setTKey('custom'); setStep('form'); setFormTab('basic'); }}
+              className="lift bg-white border-2 border-dashed border-slate-200 hover:border-sky-300 rounded-2xl p-6 text-left flex flex-col gap-3 transition-all group shadow-sm">
+              <span className="text-3xl">⚙️</span>
+              <div>
+                <p className="text-sm font-bold text-slate-600 group-hover:text-sky-600 transition-colors">사용자 설정</p>
+                <p className="text-xs text-slate-400 mt-1">직접 컨테이너 설정</p>
+              </div>
+              <div className="w-2 h-2 rounded-full bg-slate-400"/>
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Step 2: Image ───────────────────────────────────────────────────
+  if (step==='image') {
+    const t = TEMPLATES[tKey];
+    return (
+      <main className="flex-1 overflow-y-auto">
+        <PageHeader title={`${t.label} — 이미지 선택`} desc="실행할 컨테이너 이미지를 선택하세요"
+          action={
+            <button onClick={()=>setStep('template')}
+              className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-sky-600 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-300 transition-all">
+              <ArrowLeft size={15}/>이전
+            </button>
+          }
+        />
+        <div className="px-10 py-7">
+          <div className="flex items-center gap-2 text-xs text-slate-400 mb-6">
+            <button onClick={()=>setStep('template')} className="hover:text-sky-500 transition-colors">템플릿 선택</button>
+            <ChevronRight size={12}/>
+            <span className="font-semibold text-slate-700">{t.label}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {t.images.map(img=>(
+              <button key={img.id}
+                onClick={()=>{ setSelImg(img); set('imagePath', img.path); setStep('form'); setFormTab('basic'); }}
+                className={`lift bg-white border-2 ${selImg?.id===img.id?'border-sky-400':'border-slate-100'} hover:border-sky-300 rounded-2xl p-5 text-left flex flex-col gap-3 transition-all shadow-sm group`}>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-bold text-slate-800 group-hover:text-sky-600 transition-colors leading-snug">{img.name}</span>
+                  <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${TAG_COLORS[img.tag]||'bg-slate-100 text-slate-600'}`}>{img.tag}</span>
+                </div>
+                <code className="text-[11px] text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg block truncate">{img.path}</code>
+                <div className="flex items-center gap-1.5 text-xs text-sky-500 font-semibold">
+                  <span>선택하기</span><ChevronRight size={12}/>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Step 3: Form ────────────────────────────────────────────────────
+  const FORM_TABS = [
+    {id:'basic',     label:'기본 정보'},
+    {id:'container', label:'컨테이너 설정'},
+    {id:'gpu',       label:'GPU 설정'},
+    {id:'other',     label:'기타 설정'},
+  ];
+
+  const addEnv = () => setForm(p=>({...p, envVars:[...p.envVars,{k:'',v:''}]}));
+  const rmEnv  = (i) => setForm(p=>({...p, envVars:p.envVars.filter((_,idx)=>idx!==i)}));
+  const setEnv = (i,field,val) => setForm(p=>({...p, envVars:p.envVars.map((e,idx)=>idx===i?{...e,[field]:val}:e)}));
+
+  const backLabel = tKey==='custom' ? '템플릿 선택' : '이미지 선택';
+  const backStep  = tKey==='custom' ? 'template' : 'image';
+
+  return (
+    <main className="flex-1 overflow-y-auto">
+      <PageHeader title="워크로드 생성"
+        action={
+          <button onClick={()=>setStep(backStep)}
+            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-sky-600 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-300 transition-all">
+            <ArrowLeft size={15}/>{backLabel}
+          </button>
+        }
+      />
+      <div className="px-10 py-3 bg-white border-b border-slate-100 flex items-center gap-2 text-xs text-slate-400">
+        <button onClick={()=>setStep('template')} className="hover:text-sky-500 transition-colors">템플릿</button>
+        <ChevronRight size={11}/>
+        {tKey!=='custom'&&<>
+          <button onClick={()=>setStep('image')} className="hover:text-sky-500 transition-colors">{TEMPLATES[tKey]?.label}</button>
+          <ChevronRight size={11}/>
+        </>}
+        <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+          {selImg ? (
+            <>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${TEMPLATES[tKey]?.chip}`}>{TEMPLATES[tKey]?.label}</span>
+              {selImg.name}
+            </>
+          ) : '사용자 설정'}
+        </span>
+      </div>
+
+      <div className="px-10 py-7 max-w-3xl">
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 mb-6 shadow-sm w-fit">
+          {FORM_TABS.map((t,i)=>(
+            <button key={t.id} onClick={()=>setFormTab(t.id)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5
+                ${formTab===t.id?'bg-sky-500 text-white shadow-sm':'text-slate-500 hover:text-slate-700'}`}>
+              <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0
+                ${formTab===t.id?'bg-white/25 text-white':'bg-slate-100 text-slate-500'}`}>{i+1}</span>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {formTab==='basic'&&(
+          <FSection icon={Box} title="기본 정보">
+            <FField label="워크로드 이름">
+              <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="예: My LLM Training Job" className={IC}/>
+            </FField>
+            <FField label="워크로드 설명">
+              <textarea value={form.desc} onChange={e=>set('desc',e.target.value)} placeholder="워크로드에 대한 간단한 설명을 입력하세요" rows={3}
+                className={`${IC} resize-none`}/>
+            </FField>
+          </FSection>
+        )}
+
+        {formTab==='container'&&(
+          <div className="space-y-5">
+            <FSection icon={Box} title="저장소 설정">
+              <FField label="저장소 유형">
+                <div className="grid grid-cols-5 gap-2">
+                  {REGISTRIES.map(r=>(
+                    <button key={r.id} type="button" onClick={()=>set('registry',r.id)}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all
+                        ${form.registry===r.id?'border-sky-400 bg-sky-50':'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                      <span className={`w-8 h-8 rounded-lg ${r.bg} flex items-center justify-center text-white text-[10px] font-bold`}>{r.abbr}</span>
+                      <span className={`text-[11px] font-semibold leading-tight text-center ${form.registry===r.id?'text-sky-700':'text-slate-600'}`}>{r.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </FField>
+              <FField label="컨테이너 이미지 경로">
+                <div className="flex gap-2">
+                  <input value={form.imagePath} onChange={e=>{ set('imagePath',e.target.value); setImgStatus(null); }}
+                    placeholder="예: pytorch/pytorch:2.3.0-cuda12.1-cudnn8-devel" className={`${IC} flex-1`}/>
+                  <button type="button" onClick={()=>setImgStatus('ok')}
+                    className={`px-4 py-3 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0
+                      ${imgStatus==='ok'?'bg-emerald-50 text-emerald-600 border-2 border-emerald-200'
+                      :imgStatus==='fail'?'bg-red-50 text-red-600 border-2 border-red-200'
+                      :'bg-sky-500 hover:bg-sky-600 text-white'}`}>
+                    {imgStatus==='ok'?'✓ 검증 완료':imgStatus==='fail'?'✗ 검증 실패':'이미지 검증'}
+                  </button>
+                </div>
+                {imgStatus==='ok'&&<p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1"><CheckCircle size={12}/>이미지가 확인되었습니다</p>}
+              </FField>
+            </FSection>
+            <FSection icon={Settings} title="실행 설정">
+              <div className="grid grid-cols-2 gap-4">
+                <FField label="포트" hint="외부에 노출할 포트 번호">
+                  <input value={form.port} onChange={e=>set('port',e.target.value)} placeholder="8080" className={IC}/>
+                </FField>
+                <FField label="명령 (Command)" hint="컨테이너 시작 명령 (선택)">
+                  <input value={form.cmd} onChange={e=>set('cmd',e.target.value)} placeholder="python train.py" className={IC}/>
+                </FField>
+              </div>
+              <FField label="환경변수">
+                <div className="space-y-2">
+                  {form.envVars.map((ev,i)=>(
+                    <div key={i} className="flex items-center gap-2">
+                      <input value={ev.k} onChange={e=>setEnv(i,'k',e.target.value)} placeholder="KEY" className={`${IC} flex-1`}/>
+                      <span className="text-slate-400 font-mono text-sm flex-shrink-0">=</span>
+                      <input value={ev.v} onChange={e=>setEnv(i,'v',e.target.value)} placeholder="VALUE" className={`${IC} flex-1`}/>
+                      <button type="button" onClick={()=>rmEnv(i)} className="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 transition-all flex-shrink-0">
+                        <Trash size={14}/>
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={addEnv}
+                    className="flex items-center gap-2 text-sm text-sky-500 hover:text-sky-600 font-semibold mt-1 transition-colors">
+                    <Plus size={14}/>환경변수 추가
+                  </button>
+                </div>
+              </FField>
+            </FSection>
+          </div>
+        )}
+
+        {formTab==='gpu'&&(
+          <div className="space-y-5">
+            <FSection icon={Cpu} title="GPU 설정">
+              <FField label="GPU 모델">
+                <FSel value={form.gpuModel} onChange={v=>set('gpuModel',v)}
+                  opts={GPU_MODELS.map(g=>[g.id,`${g.label}  —  $${g.price.toFixed(2)}/hr`])}/>
+              </FField>
+              <FField label="GPU 수량">
+                <div className="flex items-center gap-2.5">
+                  {[1,2,4,8].map(n=>(
+                    <button key={n} type="button" onClick={()=>set('gpuCount',n)}
+                      className={`w-16 h-11 rounded-xl border-2 text-sm font-bold transition-all
+                        ${form.gpuCount===n?'border-sky-400 bg-sky-500 text-white':'border-slate-200 text-slate-600 hover:border-sky-300 bg-white'}`}>
+                      {n}×
+                    </button>
+                  ))}
+                </div>
+              </FField>
+              <div className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${form.fastFailover?'bg-sky-50 border-sky-200':'bg-slate-50 border-slate-200'}`}
+                onClick={()=>set('fastFailover',!form.fastFailover)}>
+                <input type="checkbox" checked={form.fastFailover} onChange={()=>{}}
+                  className="w-4 h-4 accent-sky-500 cursor-pointer flex-shrink-0"/>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-700">빠른 페일오버</span>
+                    <div className="tooltip-wrap relative">
+                      <Info size={14} className="text-slate-400 cursor-help"/>
+                      <div className="tooltip-box absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2.5 bg-slate-800 text-white text-xs rounded-xl w-72 z-50 text-center leading-relaxed shadow-lg">
+                        연결 중단시, 자동으로 비슷한 가격대의 다른 노드와 연결됩니다.
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"/>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">비슷한 가격대의 노드로 자동 전환</p>
+                </div>
+                {form.fastFailover&&<ShieldCheck size={16} className="text-sky-500 flex-shrink-0"/>}
+              </div>
+              <FField label="노드 선택">
+                <div className="flex items-center gap-2 mb-3">
+                  {[{v:'auto',l:'자동'},{v:'manual',l:'직접 선택'}].map(opt=>(
+                    <button key={opt.v} type="button"
+                      onClick={()=>{ set('nodeMode',opt.v); if(opt.v==='manual') setShowModal(true); }}
+                      className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all
+                        ${form.nodeMode===opt.v?'bg-sky-500 text-white border-sky-500':'bg-white text-slate-600 border-slate-200 hover:border-sky-300'}`}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+                {form.nodeMode==='auto'&&(
+                  <div className="flex items-center gap-2 p-3.5 bg-sky-50 rounded-xl border border-sky-100">
+                    <CheckCircle size={14} className="text-sky-500 flex-shrink-0"/>
+                    <p className="text-xs text-sky-700">선택한 GPU 사양에 맞는 최적의 노드를 자동으로 배정합니다</p>
+                  </div>
+                )}
+                {form.nodeMode==='manual'&&(
+                  form.chosenNode ? (
+                    <div className="flex items-center justify-between p-4 bg-sky-50 rounded-xl border border-sky-200">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">{form.chosenNode.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{form.chosenNode.spec} · {form.chosenNode.region} · 업타임 {form.chosenNode.uptime}</p>
+                        <p className="text-xs text-sky-600 font-semibold mt-0.5">${form.chosenNode.pricePerHour}/hr</p>
+                      </div>
+                      <button type="button" onClick={()=>setShowModal(true)} className="text-xs text-sky-500 font-bold hover:text-sky-600 px-3 py-1.5 rounded-lg border border-sky-200 bg-white">변경</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={()=>setShowModal(true)}
+                      className="w-full p-4 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 hover:border-sky-300 hover:text-sky-500 transition-all flex items-center justify-center gap-2">
+                      <Plus size={15}/>노드 선택하기
+                    </button>
+                  )
+                )}
+              </FField>
+            </FSection>
+          </div>
+        )}
+
+        {formTab==='other'&&(
+          <FSection icon={Settings} title="기타 설정">
+            <FField label="최소 CUDA 버전" hint="선택한 버전 이상의 CUDA가 설치된 노드에서만 실행됩니다">
+              <div className="flex flex-wrap gap-2 mt-1">
+                {['11.8','12.0','12.1','12.2','12.3','12.4'].map(v=>(
+                  <button key={v} type="button" onClick={()=>set('minCuda',v)}
+                    className={`px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all
+                      ${form.minCuda===v?'bg-sky-500 text-white border-sky-500':'bg-white text-slate-600 border-slate-200 hover:border-sky-300'}`}>
+                    CUDA {v}
+                  </button>
+                ))}
+              </div>
+            </FField>
+          </FSection>
+        )}
+
+        <div className="mt-6 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center">
+              <DollarSign size={18} className="text-sky-500"/>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">시간당 예상 가격</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-sky-600">${estPrice.toFixed(2)}</span>
+                <span className="text-sm text-slate-400">/hr</span>
+                <span className="text-xs text-slate-400 ml-1">({form.gpuCount}× GPU)</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={()=>onNavigate('workload-manage')}
+              className="px-6 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+              취소
+            </button>
+            <button onClick={handleCreate}
+              className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-7 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm shadow-sky-200">
+              <Zap size={15}/>워크로드 생성
+            </button>
+          </div>
+        </div>
+        <div className="h-6"/>
+      </div>
+      {showModal&&<NodeSelectModal onSelect={n=>{set('chosenNode',n);set('nodeMode','manual');}} onClose={()=>setShowModal(false)} chosenId={form.chosenNode?.id}/>}
+    </main>
+  );
+}
+
+// ── Node Manage ───────────────────────────────────────────────────────
+function NodeManageView({ onNavigate }) {
+  const online    = NODES.filter(n=>n.status==='online');
+  const totalEarn = NODES.reduce((s,n)=>s+n.totalEarnings,0);
+  const avgUtil   = online.length?Math.round(online.reduce((s,n)=>s+n.utilization,0)/online.length):0;
+  return (
+    <main className="flex-1 overflow-y-auto">
+      <PageHeader title="노드 관리" desc="내 GPU를 공유하고 수익을 창출하세요"
+        action={<button onClick={()=>onNavigate('share-create')} className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm shadow-sky-200"><Plus size={15}/>노드 추가</button>}
+      />
+      <div className="px-10 py-7">
+        <div className="grid grid-cols-3 gap-5 mb-7">
+          <StatCard icon={Server}     title="총 노드"      value={`${NODES.length}개`}  sub={`${online.length}개 온라인`}   bgClass="bg-sky-50"     iconClass="text-sky-500"/>
+          <StatCard icon={BarChart2}  title="평균 가동률"  value={`${avgUtil}%`}         sub="온라인 노드 기준" trend="+3.1%" trendUp={true} bgClass="bg-violet-50"  iconClass="text-violet-500"/>
+          <StatCard icon={DollarSign} title="총 누적 수익" value={`$${totalEarn}`}       sub="이번 달 +8.4%"   trend="+8.4%" trendUp={true} bgClass="bg-emerald-50" iconClass="text-emerald-500"/>
+        </div>
+        <div className="grid grid-cols-3 gap-5">
+          {NODES.map(n=><NodeWidget key={n.id} node={n}/>)}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ── Node Create (LinkNode Agent) ──────────────────────────────────────
+function NodeCreateView({ onNavigate }) {
+  const [agentStatus, setAgentStatus] = useState('idle'); // idle | sharing | running
+  const [assignedUser, setAssignedUser] = useState(null);
+
+  useEffect(()=>{
+    if(agentStatus==='sharing'){
+      const t = setTimeout(()=>{
+        setAgentStatus('running');
+        setAssignedUser({user:'User-4872', region:'Seoul, KR', gpu:'RTX 4090'});
+      }, 3000);
+      return ()=>clearTimeout(t);
+    }
+  },[agentStatus]);
+
+  const steps = [
+    {
+      num:1, label:'Setup', emoji:'🖥️',
+      bg:'from-sky-400 to-sky-600', lightBg:'bg-sky-50', border:'border-sky-200',
+      desc:'PC 환경을 준비합니다. Windows 10+, macOS 12+, Ubuntu 20.04+ 가 지원됩니다. GPU 드라이버와 인터넷 연결이 필요합니다.',
+    },
+    {
+      num:2, label:'Download', emoji:'⬇️',
+      bg:'from-violet-400 to-violet-600', lightBg:'bg-violet-50', border:'border-violet-200',
+      desc:'아래 버튼을 눌러 LinkNode Agent를 다운로드하세요. 설치 파일을 실행하면 자동으로 설치가 완료됩니다.',
+    },
+    {
+      num:3, label:'Login', emoji:'🔐',
+      bg:'from-emerald-400 to-emerald-600', lightBg:'bg-emerald-50', border:'border-emerald-200',
+      desc:'에이전트 앱을 실행하고 LinkNode 계정으로 로그인합니다. 최초 로그인 시 GPU가 자동으로 감지됩니다.',
+    },
+    {
+      num:4, label:'Start', emoji:'🚀',
+      bg:'from-amber-400 to-orange-500', lightBg:'bg-amber-50', border:'border-amber-200',
+      desc:'에이전트에서 Start 버튼을 누르면 공유가 시작됩니다. P2P로 사용자가 배정되면 Running 상태가 됩니다.',
+    },
+  ];
+
+  return (
+    <main className="flex-1 overflow-y-auto">
+      <PageHeader title="노드 생성" desc="LinkNode 에이전트로 내 GPU를 공유하고 수익을 창출하세요"/>
+      <div className="px-10 py-7 space-y-7 max-w-5xl">
+
+        {/* Notice banner */}
+        <div className="flex items-center gap-3 bg-sky-50 border border-sky-200 rounded-2xl px-6 py-4">
+          <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center flex-shrink-0">
+            <Info size={15} className="text-white"/>
+          </div>
+          <p className="text-sm font-semibold text-sky-800">에이전트 연결시, 노드가 자동으로 등록됩니다.</p>
+        </div>
+
+        {/* Download hero */}
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 flex items-center justify-between overflow-hidden relative">
+          <div className="absolute inset-0 opacity-10" style={{backgroundImage:'radial-gradient(circle at 70% 50%, #0ea5e9 0%, transparent 60%)'}}/>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-sky-400 to-sky-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Zap size={22} className="text-white"/>
+              </div>
+              <div>
+                <p className="text-white font-bold text-xl">LinkNode Agent</p>
+                <p className="text-slate-400 text-sm">v2.1.0 · Windows / macOS / Linux</p>
+              </div>
+            </div>
+            <p className="text-slate-300 text-sm max-w-md leading-relaxed">
+              내 PC의 GPU를 LinkNode 네트워크에 공유하고<br/>
+              유휴 GPU로 수익을 창출하세요.
+            </p>
+          </div>
+          <div className="relative z-10 flex flex-col items-end gap-3">
+            <button className="flex items-center gap-3 bg-sky-500 hover:bg-sky-400 text-white px-8 py-4 rounded-2xl text-base font-bold transition-all shadow-lg shadow-sky-900/30 hover:shadow-sky-900/50 hover:-translate-y-0.5">
+              <Download size={20}/>
+              LinkNode Agent 다운로드
+            </button>
+            <p className="text-slate-500 text-xs">무료 · SHA-256 서명 검증</p>
+          </div>
+        </div>
+
+        {/* Step guide */}
+        <div>
+          <h2 className="text-lg font-bold text-slate-800 mb-1">LinkNode Agent 실행 방법</h2>
+          <p className="text-sm text-slate-500 mb-6">아래 단계를 따라 에이전트를 설치하고 공유를 시작하세요</p>
+
+          <div className="grid grid-cols-4 gap-4">
+            {steps.map((s,i)=>(
+              <div key={s.num} className={`bg-white rounded-2xl border ${s.border} shadow-sm overflow-hidden`}>
+                {/* Illustration area */}
+                <div className={`bg-gradient-to-br ${s.bg} p-6 flex flex-col items-center justify-center gap-2 relative`}>
+                  <span className="text-5xl select-none">{s.emoji}</span>
+                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-widest">STEP {s.num}</span>
+                  {/* Connector arrow */}
+                  {i < steps.length-1 && (
+                    <div className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white rounded-full border border-slate-200 flex items-center justify-center shadow-sm">
+                      <ChevronRight size={12} className="text-slate-400"/>
+                    </div>
+                  )}
+                </div>
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="text-base font-bold text-slate-800 mb-2">{s.label}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Agent status / Start */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h3 className="text-sm font-bold text-slate-700 mb-5 flex items-center gap-2">
+            <Play size={14} className="text-sky-500"/>에이전트 상태
+          </h3>
+
+          {agentStatus==='idle' && (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 font-medium">에이전트가 연결되지 않았습니다</p>
+                <p className="text-xs text-slate-400 mt-1">에이전트 앱에서 로그인 후 Start를 누르거나, 아래 버튼을 눌러 공유를 시작하세요</p>
+              </div>
+              <button
+                onClick={()=>setAgentStatus('sharing')}
+                className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-7 py-3.5 rounded-xl text-sm font-bold transition-all shadow-sm shadow-emerald-200 hover:-translate-y-0.5">
+                <Play size={15}/>Start
+              </button>
+            </div>
+          )}
+
+          {agentStatus==='sharing' && (
+            <div className="flex items-center justify-between fade-in">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+                  <svg className="spin text-amber-500" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-amber-700">공유 시작됨</p>
+                  <p className="text-xs text-slate-400 mt-0.5">P2P 사용자 배정 대기 중...</p>
+                </div>
+              </div>
+              <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-4 py-2 rounded-xl font-semibold">대기 중</span>
+            </div>
+          )}
+
+          {agentStatus==='running' && assignedUser && (
+            <div className="fade-in space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                    <Wifi size={20} className="text-emerald-500"/>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-emerald-700">Running</p>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 pulse"/>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">{assignedUser.user} 연결됨 · {assignedUser.region}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={()=>{ setAgentStatus('idle'); setAssignedUser(null); }}
+                  className="flex items-center gap-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all">
+                  <Square size={13}/>공유 중지
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-sky-50 rounded-xl p-4 border border-sky-100">
+                  <p className="text-xs text-slate-400 mb-1">GPU 가동률</p>
+                  <p className="text-xl font-bold text-sky-600">87%</p>
+                </div>
+                <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                  <p className="text-xs text-slate-400 mb-1">오늘 수익</p>
+                  <p className="text-xl font-bold text-emerald-600">$3.20</p>
+                </div>
+                <div className="bg-violet-50 rounded-xl p-4 border border-violet-100">
+                  <p className="text-xs text-slate-400 mb-1">연결 시간</p>
+                  <p className="text-xl font-bold text-violet-600">8h 14m</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="h-4"/>
+      </div>
+    </main>
+  );
+}
+
+// ── Placeholder ───────────────────────────────────────────────────────
+function PlaceholderView({ icon:Icon, title, desc }) {
+  return (
+    <main className="flex-1 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-18 h-18 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm" style={{width:72,height:72}}>
+          <Icon size={32} className="text-sky-400"/>
+        </div>
+        <h2 className="text-xl font-bold text-slate-700 mb-2">{title}</h2>
+        <p className="text-sm text-slate-400 mb-5">{desc}</p>
+        <span className="inline-block px-5 py-2.5 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-600 font-bold">Coming Soon</span>
+      </div>
+    </main>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────
+function App() {
+  const [activeTab,         setActiveTab]         = useState('home');
+  const [expanded,          setExpanded]          = useState({workload:false,share:false});
+  const [workloads,         setWorkloads]         = useState(WORKLOADS_INIT);
+  const [monitoringWorkload,setMonitoringWorkload] = useState(null);
+
+  const toggleExpand = useCallback(id=>{ setExpanded(p=>({...p,[id]:!p[id]})); },[]);
+
+  const navigate = useCallback(tab=>{
+    setActiveTab(tab);
+    setMonitoringWorkload(null);
+    if(tab.startsWith('workload-')) setExpanded(p=>({...p,workload:true}));
+    if(tab.startsWith('share-'))    setExpanded(p=>({...p,share:true}));
+  },[]);
+
+  const addWorkload = useCallback(w=>{ setWorkloads(p=>[...p,w]); },[]);
+
+  const view = ()=>{
+    switch(activeTab){
+      case 'home':
+        return <HomeView onNavigate={navigate} workloads={workloads}/>;
+      case 'workload-manage':
+        if(monitoringWorkload)
+          return <WorkloadMonitorView workload={monitoringWorkload} onBack={()=>setMonitoringWorkload(null)}/>;
+        return <WorkloadManageView onNavigate={navigate} workloads={workloads} onSelectWorkload={setMonitoringWorkload}/>;
+      case 'workload-create':
+        return <WorkloadCreateView onNavigate={navigate} onCreateWorkload={addWorkload}/>;
+      case 'share-manage':
+        return <NodeManageView onNavigate={navigate}/>;
+      case 'share-create':
+        return <NodeCreateView onNavigate={navigate}/>;
+      case 'community':
+        return <PlaceholderView icon={Users}    title="커뮤니티" desc="커뮤니티 기능을 준비 중입니다"/>;
+      case 'settings':
+        return <PlaceholderView icon={Settings} title="설정"     desc="설정 페이지를 준비 중입니다"/>;
+      case 'profile':
+        return <PlaceholderView icon={User}     title="프로필"   desc="프로필 페이지를 준비 중입니다"/>;
+      default:
+        return <HomeView onNavigate={navigate} workloads={workloads}/>;
+    }
+  };
+
+  return (
+    <div style={{display:'flex',height:'100vh',overflow:'hidden'}}>
+      <Sidebar activeTab={activeTab} onSelect={navigate} expanded={expanded} onToggle={toggleExpand}/>
+      {view()}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
