@@ -9,7 +9,7 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']}}}};</script>
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{sky:{50:'#f2f6f6',100:'#e5eded',200:'#D4DFDF',300:'#b8cfcf',400:'#9abcbc',500:'#7aabab',600:'#6a9a9a',700:'#5a8888',800:'#4a7777',900:'#3a6666'}}}}};</script>
   <style>
     *,*::before,*::after{box-sizing:border-box}
     html,body,#root{height:100%;margin:0}
@@ -18,11 +18,11 @@
     .submenu.open{max-height:240px;opacity:1}.submenu.closed{max-height:0;opacity:0}
     .chevron{transition:transform .25s cubic-bezier(.4,0,.2,1)}.chevron.rotated{transform:rotate(180deg)}
     .lift{transition:transform .2s ease,box-shadow .2s ease}
-    .lift:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(14,165,233,.13),0 2px 8px rgba(0,0,0,.05)}
+    .lift:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(122,171,171,.18),0 2px 8px rgba(0,0,0,.05)}
     @keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.78)}}
     .pulse{animation:dot-pulse 1.9s ease-in-out infinite}
     .bar{transition:width 1s cubic-bezier(.4,0,.2,1)}
-    .g-text{background:linear-gradient(135deg,#0ea5e9 0%,#38bdf8 55%,#0284c7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .g-text{background:linear-gradient(135deg,#7aabab 0%,#9abcbc 55%,#6a9a9a 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
     ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
     .toggle-thumb{transition:left .2s ease}
     .tooltip-wrap:hover .tooltip-box{opacity:1;pointer-events:auto}
@@ -86,6 +86,7 @@ const Terminal     = MkSvg({p:['M4 17l6-6-6-6','M12 19h8']});
 const Lock         = MkSvg({r:[[3,11,18,11,2]],p:['M7 11V7a5 5 0 0 1 10 0v4']});
 const Play         = MkSvg({p:['M5 3l14 9-14 9V3z']});
 const Monitor      = MkSvg({r:[[2,3,20,14,2]],p:['M8 21l8 0','M12 17v4']});
+const Mail         = MkSvg({r:[[2,4,20,16,2]],p:['M22 7l-10 7L2 7']});
 
 // ── Mock data ─────────────────────────────────────────────────────────
 const WORKLOADS_INIT = [
@@ -338,15 +339,15 @@ function NavItem({ item, activeTab, onSelect, expanded, onToggle }) {
     </div>
   );
 }
-function Sidebar({ activeTab, onSelect, expanded, onToggle }) {
+function Sidebar({ activeTab, onSelect, expanded, onToggle, onLogout }) {
   return (
     <aside className="w-64 h-full bg-white border-r border-slate-100 flex flex-col flex-shrink-0">
-      <div className="px-5 py-5 border-b border-slate-100 flex items-center gap-3">
-        <div className="w-9 h-9 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center shadow-sm shadow-sky-200">
+      <button onClick={()=>onSelect('home')} className="px-5 py-5 border-b border-slate-100 flex items-center gap-3 w-full hover:bg-slate-50 transition-colors text-left">
+        <div className="w-9 h-9 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center shadow-sm shadow-sky-200 flex-shrink-0">
           <Zap size={17} className="text-white"/>
         </div>
         <span className="text-[18px] font-bold text-slate-900 tracking-tight">Link<span className="g-text">Node</span></span>
-      </div>
+      </button>
       <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">메뉴</p>
         {NAV_TOP.map(item=>(
@@ -361,14 +362,16 @@ function Sidebar({ activeTab, onSelect, expanded, onToggle }) {
       </nav>
       <div className="px-4 py-4 border-t border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-400 to-violet-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-bold">EJ</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate">이은재</p>
-            <p className="text-xs text-slate-400">Pro Plan</p>
-          </div>
-          <button className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100">
+          <button onClick={()=>onSelect('profile')} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-75 transition-opacity text-left">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-400 to-violet-500 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-bold">EJ</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 truncate">이은재</p>
+              <p className="text-xs text-slate-400">Pro Plan</p>
+            </div>
+          </button>
+          <button onClick={onLogout} title="로그아웃" className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50 flex-shrink-0">
             <LogOut size={15}/>
           </button>
         </div>
@@ -378,10 +381,10 @@ function Sidebar({ activeTab, onSelect, expanded, onToggle }) {
 }
 
 // ── Home View ─────────────────────────────────────────────────────────
-function WorkloadRow({ w }) {
+function WorkloadRow({ w, onSelect }) {
   const barGrad = w.status==='running'?'from-sky-400 to-sky-500':'from-amber-400 to-amber-500';
   return (
-    <div className="flex items-center gap-4 px-4 py-4 hover:bg-slate-50/80 transition-colors rounded-xl cursor-pointer group">
+    <div onClick={onSelect} className="flex items-center gap-4 px-4 py-4 hover:bg-slate-50/80 transition-colors rounded-xl cursor-pointer group">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
           <Layers size={15} className="text-sky-500"/>
@@ -469,7 +472,7 @@ function NodeWidget({ node }) {
     </div>
   );
 }
-function HomeView({ onNavigate, workloads }) {
+function HomeView({ onNavigate, workloads, onSelectWorkload }) {
   const running     = workloads.filter(w=>w.status==='running');
   const totalGPUs   = running.reduce((s,w)=>s+w.gpus,0);
   const totalCost   = workloads.reduce((s,w)=>s+w.cost,0);
@@ -524,7 +527,7 @@ function HomeView({ onNavigate, workloads }) {
             <div className="w-14 flex-shrink-0 text-right">비용</div>
           </div>
           <div className="px-4 pb-4 space-y-0.5">
-            {workloads.map(w=><WorkloadRow key={w.id} w={w}/>)}
+            {workloads.map(w=><WorkloadRow key={w.id} w={w} onSelect={()=>onSelectWorkload&&onSelectWorkload(w)}/>)}
           </div>
         </div>
         <div>
@@ -745,7 +748,7 @@ function WorkloadManageView({ onNavigate, workloads, onSelectWorkload }) {
                   </div>
                 )}
                 <div className="flex items-center gap-7 mt-5 pt-4 border-t border-slate-100">
-                  {[{Ic:Clock,val:w.duration,label:'실행 시간'},{Ic:Globe,val:w.region,label:'리전'},{Ic:DollarSign,val:`$${w.cost.toFixed(2)}`,label:'비용',sky:true}].map(({Ic,val,label,sky})=>(
+                  {[{Ic:Clock,val:w.duration,label:'실행 시간'},{Ic:DollarSign,val:`$${w.cost.toFixed(2)}`,label:'비용',sky:true}].map(({Ic,val,label,sky})=>(
                     <div key={label} className="flex items-center gap-1.5 text-xs text-slate-500">
                       <Ic size={13} className="text-slate-400"/>
                       <span>{label}: <strong className={sky?'text-sky-600':'text-slate-700'}>{val}</strong></span>
@@ -1261,22 +1264,22 @@ function NodeCreateView({ onNavigate }) {
     {
       num:1, label:'Setup', emoji:'🖥️',
       bg:'from-sky-400 to-sky-600', lightBg:'bg-sky-50', border:'border-sky-200',
-      desc:'PC 환경을 준비합니다. Windows 10+, macOS 12+, Ubuntu 20.04+ 가 지원됩니다. GPU 드라이버와 인터넷 연결이 필요합니다.',
+      desc:'에이전트를 실행한 뒤, setup 버튼을 클릭합니다. 에이전트가 자동으로 GPU를 검증하고, 공유 여부를 확인합니다. GPU 드라이버와 인터넷 연결이 필요합니다.',
     },
     {
       num:2, label:'Download', emoji:'⬇️',
       bg:'from-violet-400 to-violet-600', lightBg:'bg-violet-50', border:'border-violet-200',
-      desc:'아래 버튼을 눌러 LinkNode Agent를 다운로드하세요. 설치 파일을 실행하면 자동으로 설치가 완료됩니다.',
+      desc:'setup 이후 download 버튼을 클릭하여 GPU 공유에 필요한 추가 데이터 및 큐레이션 이미지를 다운로드합니다.',
     },
     {
       num:3, label:'Login', emoji:'🔐',
       bg:'from-emerald-400 to-emerald-600', lightBg:'bg-emerald-50', border:'border-emerald-200',
-      desc:'에이전트 앱을 실행하고 LinkNode 계정으로 로그인합니다. 최초 로그인 시 GPU가 자동으로 감지됩니다.',
+      desc:'login 버튼을 클릭하여 LinkNode 계정으로 로그인합니다. 로그인시, GPU가 자동으로 감지 및 등록됩니다.',
     },
     {
       num:4, label:'Start', emoji:'🚀',
       bg:'from-amber-400 to-orange-500', lightBg:'bg-amber-50', border:'border-amber-200',
-      desc:'에이전트에서 Start 버튼을 누르면 공유가 시작됩니다. P2P로 사용자가 배정되면 Running 상태가 됩니다.',
+      desc:'start 버튼을 클릭하면 GPU 공유가 시작됩니다. 노드가 유휴 노드로 등록되며 사용자가 배정되면 작동 노드로 변경됩니다.',
     },
   ];
 
@@ -1312,17 +1315,45 @@ function NodeCreateView({ onNavigate }) {
             </p>
           </div>
           <div className="relative z-10 flex flex-col items-end gap-3">
-            <button className="flex items-center gap-3 bg-sky-500 hover:bg-sky-400 text-white px-8 py-4 rounded-2xl text-base font-bold transition-all shadow-lg shadow-sky-900/30 hover:shadow-sky-900/50 hover:-translate-y-0.5">
-              <Download size={20}/>
-              LinkNode Agent 다운로드
-            </button>
-            <p className="text-slate-500 text-xs">무료 · SHA-256 서명 검증</p>
+            <div className="text-right mb-0.5">
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">운영체제 선택</p>
+              <p className="text-slate-600 text-[11px] mt-0.5">v2.1.0 · 무료 · SHA-256 서명 검증</p>
+            </div>
+            <div className="flex flex-col gap-2" style={{minWidth:200}}>
+              <button className="flex items-center justify-between gap-4 bg-sky-500 hover:bg-sky-400 text-white px-5 py-3 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{flexShrink:0}}>
+                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-13.051-1.949"/>
+                  </svg>
+                  Windows
+                </div>
+                <span className="text-sky-200 text-xs font-normal">.exe</span>
+              </button>
+              <button className="flex items-center justify-between gap-4 bg-slate-700 hover:bg-slate-600 text-white px-5 py-3 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{flexShrink:0}}>
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                  </svg>
+                  macOS
+                </div>
+                <span className="text-slate-400 text-xs font-normal">.dmg</span>
+              </button>
+              <button className="flex items-center justify-between gap-4 bg-slate-700 hover:bg-slate-600 text-white px-5 py-3 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{flexShrink:0}}>
+                    <path d="M12.5 2C9.46 2 6.71 3.68 5.22 6.22 3.73 8.76 3.73 11.85 5.22 14.39L8 19.5c.83 1.5 2.33 2.5 4 2.5s3.17-1 4-2.5l2.78-5.11C20.27 11.85 20.27 8.76 18.78 6.22 17.29 3.68 14.54 2 12.5 2zm0 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-3 7.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5S8 13.83 8 13s.67-1.5 1.5-1.5zm6 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z"/>
+                  </svg>
+                  Linux
+                </div>
+                <span className="text-slate-400 text-xs font-normal">.tar.gz</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Step guide */}
         <div>
-          <h2 className="text-lg font-bold text-slate-800 mb-1">LinkNode Agent 실행 방법</h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-1">LinkNode Agent 사용 방법</h2>
           <p className="text-sm text-slate-500 mb-6">아래 단계를 따라 에이전트를 설치하고 공유를 시작하세요</p>
 
           <div className="grid grid-cols-4 gap-4">
@@ -1430,6 +1461,168 @@ function NodeCreateView({ onNavigate }) {
   );
 }
 
+// ── Login View ────────────────────────────────────────────────────────
+function LoginView({ onLogin }) {
+  return (
+    <div className="h-screen flex items-center justify-center fade-in" style={{background:'#f2f6f6'}}>
+      <div className="bg-white rounded-3xl shadow-xl p-10 w-full mx-4" style={{maxWidth:380}}>
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 bg-gradient-to-br from-sky-400 to-sky-600 rounded-2xl flex items-center justify-center shadow-md mb-4">
+            <Zap size={26} className="text-white"/>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Link<span className="g-text">Node</span></h1>
+          <p className="text-sm text-slate-400 mt-1.5 text-center">GPU 렌탈 네트워크에 오신 것을 환영합니다</p>
+        </div>
+        <div className="space-y-2.5">
+          <button onClick={onLogin}
+            className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm"
+            style={{background:'#FEE500',color:'#191919'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+              <path d="M12 3C7.03 3 3 6.36 3 10.5c0 2.64 1.58 4.97 4 6.42L6.2 20l4.27-2.26c.5.07 1.02.11 1.53.11 4.97 0 9-3.36 9-7.35C21 6.36 16.97 3 12 3z" fill="#191919"/>
+            </svg>
+            카카오톡으로 로그인
+          </button>
+          <button onClick={onLogin}
+            className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-semibold text-white transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm"
+            style={{background:'#03C75A'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" style={{flexShrink:0}}>
+              <path d="M13.56 12.82L10.12 7H7v10h3.44V11.18L14.88 17H18V7h-3.44z" fill="white"/>
+            </svg>
+            네이버로 로그인
+          </button>
+          <button onClick={onLogin}
+            className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 bg-white transition-all hover:bg-slate-50 hover:-translate-y-0.5 active:translate-y-0 shadow-sm">
+            <svg width="20" height="20" viewBox="0 0 24 24" style={{flexShrink:0}}>
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google로 로그인
+          </button>
+          <button onClick={onLogin}
+            className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl bg-sky-500 text-white text-sm font-semibold transition-all hover:bg-sky-600 hover:-translate-y-0.5 active:translate-y-0 shadow-sm shadow-sky-200">
+            <Mail size={18} style={{flexShrink:0}}/>
+            이메일로 로그인
+          </button>
+        </div>
+        <p className="text-center text-xs text-slate-400 mt-6 leading-relaxed">
+          로그인 시 LinkNode의 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Profile View ──────────────────────────────────────────────────────
+function ProfileView({ onLogout }) {
+  const [open, setOpen] = useState(null);
+  const [userName, setUserName] = useState('이은재');
+  const [email, setEmail] = useState('dmswo1431@gmail.com');
+  const [nameInput, setNameInput] = useState('이은재');
+  const [emailInput, setEmailInput] = useState('dmswo1431@gmail.com');
+  const [pw, setPw] = useState({cur:'',next:'',conf:''});
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2200); };
+  const toggle = (sec) => setOpen(o => o===sec ? null : sec);
+  const saveName = () => { setUserName(nameInput); setOpen(null); showToast('이름이 변경되었습니다'); };
+  const saveEmail = () => { setEmail(emailInput); setOpen(null); showToast('이메일이 변경되었습니다'); };
+  const savePw = () => { setOpen(null); setPw({cur:'',next:'',conf:''}); showToast('비밀번호가 변경되었습니다'); };
+
+  const rowCls = "w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors text-left group";
+  const iconBox = "w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 group-hover:bg-sky-50 transition-colors";
+
+  return (
+    <main className="flex-1 overflow-y-auto fade-in">
+      <PageHeader title="프로필" desc="계정 정보를 관리하세요"/>
+      <div className="px-10 py-8" style={{maxWidth:520}}>
+        {toast && (
+          <div className="fixed top-6 left-1/2 z-50 fade-in bg-slate-900 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg flex items-center gap-2"
+            style={{transform:'translateX(-50%)'}}>
+            <CheckCircle size={14} className="text-emerald-400"/>{toast}
+          </div>
+        )}
+        {/* Avatar card */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex items-center gap-6 mb-5">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-sky-400 to-violet-500 flex items-center justify-center flex-shrink-0 shadow-md">
+            <span className="text-white text-2xl font-bold">EJ</span>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{userName}</h2>
+            <p className="text-sm font-semibold text-sky-500 mt-0.5">Pro Plan</p>
+            <p className="text-sm text-slate-400 mt-0.5">{email}</p>
+          </div>
+        </div>
+        {/* Settings */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          {/* Name */}
+          <button onClick={()=>toggle('name')} className={rowCls}>
+            <div className={iconBox}><User size={16} className="text-slate-500 group-hover:text-sky-500 transition-colors"/></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">이름</p>
+              <p className="text-sm font-semibold text-slate-700 mt-0.5">{userName}</p>
+            </div>
+            <ChevronDown size={15} className={`text-slate-300 flex-shrink-0 transition-transform duration-200 ${open==='name'?'rotate-180':''}`}/>
+          </button>
+          {open==='name'&&(
+            <div className="px-6 pb-5 pt-3 bg-slate-50/60 border-t border-slate-100">
+              <div className="flex gap-2">
+                <input value={nameInput} onChange={e=>setNameInput(e.target.value)} className={IC+' flex-1'} placeholder="새 이름"/>
+                <button onClick={saveName} className="px-5 py-2.5 rounded-xl bg-sky-500 text-white text-sm font-semibold hover:bg-sky-600 transition-colors">저장</button>
+              </div>
+            </div>
+          )}
+          <div className="mx-5 border-t border-slate-100"/>
+          {/* Password */}
+          <button onClick={()=>toggle('password')} className={rowCls}>
+            <div className={iconBox}><Lock size={16} className="text-slate-500 group-hover:text-sky-500 transition-colors"/></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">비밀번호</p>
+              <p className="text-sm font-semibold text-slate-700 mt-0.5">••••••••</p>
+            </div>
+            <ChevronDown size={15} className={`text-slate-300 flex-shrink-0 transition-transform duration-200 ${open==='password'?'rotate-180':''}`}/>
+          </button>
+          {open==='password'&&(
+            <div className="px-6 pb-5 pt-3 bg-slate-50/60 border-t border-slate-100 space-y-2">
+              <input type="password" value={pw.cur} onChange={e=>setPw(p=>({...p,cur:e.target.value}))} className={IC} placeholder="현재 비밀번호"/>
+              <input type="password" value={pw.next} onChange={e=>setPw(p=>({...p,next:e.target.value}))} className={IC} placeholder="새 비밀번호"/>
+              <input type="password" value={pw.conf} onChange={e=>setPw(p=>({...p,conf:e.target.value}))} className={IC} placeholder="새 비밀번호 확인"/>
+              <button onClick={savePw} className="w-full py-2.5 rounded-xl bg-sky-500 text-white text-sm font-semibold hover:bg-sky-600 transition-colors mt-1">비밀번호 변경</button>
+            </div>
+          )}
+          <div className="mx-5 border-t border-slate-100"/>
+          {/* Email */}
+          <button onClick={()=>toggle('email')} className={rowCls}>
+            <div className={iconBox}><Mail size={16} className="text-slate-500 group-hover:text-sky-500 transition-colors"/></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">이메일</p>
+              <p className="text-sm font-semibold text-slate-700 truncate mt-0.5">{email}</p>
+            </div>
+            <ChevronDown size={15} className={`text-slate-300 flex-shrink-0 transition-transform duration-200 ${open==='email'?'rotate-180':''}`}/>
+          </button>
+          {open==='email'&&(
+            <div className="px-6 pb-5 pt-3 bg-slate-50/60 border-t border-slate-100">
+              <div className="flex gap-2">
+                <input value={emailInput} onChange={e=>setEmailInput(e.target.value)} className={IC+' flex-1'} placeholder="새 이메일"/>
+                <button onClick={saveEmail} className="px-5 py-2.5 rounded-xl bg-sky-500 text-white text-sm font-semibold hover:bg-sky-600 transition-colors">저장</button>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Logout */}
+        <button onClick={onLogout}
+          className="mt-4 w-full flex items-center gap-3 px-6 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-red-200 hover:bg-red-50 transition-all group text-left">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 group-hover:bg-red-100 transition-colors">
+            <LogOut size={16} className="text-slate-500 group-hover:text-red-500 transition-colors"/>
+          </div>
+          <span className="font-semibold text-sm text-slate-600 group-hover:text-red-500 transition-colors">로그아웃</span>
+        </button>
+      </div>
+    </main>
+  );
+}
+
 // ── Placeholder ───────────────────────────────────────────────────────
 function PlaceholderView({ icon:Icon, title, desc }) {
   return (
@@ -1448,10 +1641,14 @@ function PlaceholderView({ icon:Icon, title, desc }) {
 
 // ── App ───────────────────────────────────────────────────────────────
 function App() {
+  const [isLoggedIn,        setIsLoggedIn]        = useState(true);
   const [activeTab,         setActiveTab]         = useState('home');
   const [expanded,          setExpanded]          = useState({workload:false,share:false});
   const [workloads,         setWorkloads]         = useState(WORKLOADS_INIT);
   const [monitoringWorkload,setMonitoringWorkload] = useState(null);
+
+  const handleLogin  = useCallback(()=>{ setIsLoggedIn(true); setActiveTab('home'); },[]);
+  const handleLogout = useCallback(()=>{ setIsLoggedIn(false); },[]);
 
   const toggleExpand = useCallback(id=>{ setExpanded(p=>({...p,[id]:!p[id]})); },[]);
 
@@ -1464,10 +1661,18 @@ function App() {
 
   const addWorkload = useCallback(w=>{ setWorkloads(p=>[...p,w]); },[]);
 
+  const selectWorkload = useCallback(w=>{
+    setMonitoringWorkload(w);
+    setActiveTab('workload-manage');
+    setExpanded(p=>({...p,workload:true}));
+  },[]);
+
+  if(!isLoggedIn) return <LoginView onLogin={handleLogin}/>;
+
   const view = ()=>{
     switch(activeTab){
       case 'home':
-        return <HomeView onNavigate={navigate} workloads={workloads}/>;
+        return <HomeView onNavigate={navigate} workloads={workloads} onSelectWorkload={selectWorkload}/>;
       case 'workload-manage':
         if(monitoringWorkload)
           return <WorkloadMonitorView workload={monitoringWorkload} onBack={()=>setMonitoringWorkload(null)}/>;
@@ -1483,7 +1688,7 @@ function App() {
       case 'settings':
         return <PlaceholderView icon={Settings} title="설정"     desc="설정 페이지를 준비 중입니다"/>;
       case 'profile':
-        return <PlaceholderView icon={User}     title="프로필"   desc="프로필 페이지를 준비 중입니다"/>;
+        return <ProfileView onLogout={handleLogout}/>;
       default:
         return <HomeView onNavigate={navigate} workloads={workloads}/>;
     }
@@ -1491,7 +1696,7 @@ function App() {
 
   return (
     <div style={{display:'flex',height:'100vh',overflow:'hidden'}}>
-      <Sidebar activeTab={activeTab} onSelect={navigate} expanded={expanded} onToggle={toggleExpand}/>
+      <Sidebar activeTab={activeTab} onSelect={navigate} expanded={expanded} onToggle={toggleExpand} onLogout={handleLogout}/>
       {view()}
     </div>
   );
