@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LinkNode — Dashboard</title>
+  <title>GPUB — Dashboard</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -198,8 +198,8 @@ const GPU_MODELS = [
   {id:'rtx4080',label:'RTX 4080 (16 GB)',  price:0.32},
 ];
 const AVAIL_NODES = [
-  {id:'n1',name:'LinkNode-Seoul-01',  spec:'RTX 4090 × 4', vram:'24GB×4',pricePerHour:1.60,rating:4.9,uptime:'99.8%',region:'Seoul, KR',   tags:['고속 NVLink']},
-  {id:'n2',name:'LinkNode-Tokyo-01',  spec:'A100 80GB × 2',vram:'80GB×2',pricePerHour:2.40,rating:4.7,uptime:'97.2%',region:'Tokyo, JP',   tags:['엔터프라이즈']},
+  {id:'n1',name:'GPUB-Seoul-01',  spec:'RTX 4090 × 4', vram:'24GB×4',pricePerHour:1.60,rating:4.9,uptime:'99.8%',region:'Seoul, KR',   tags:['고속 NVLink']},
+  {id:'n2',name:'GPUB-Tokyo-01',  spec:'A100 80GB × 2',vram:'80GB×2',pricePerHour:2.40,rating:4.7,uptime:'97.2%',region:'Tokyo, JP',   tags:['엔터프라이즈']},
   {id:'n3',name:'HomeLab-Seoul-03',   spec:'RTX 4090 × 2', vram:'24GB×2',pricePerHour:0.80,rating:4.8,uptime:'98.5%',region:'Seoul, KR',   tags:[]},
   {id:'n4',name:'CloudBox-SG-01',     spec:'RTX 3090 × 4', vram:'24GB×4',pricePerHour:0.60,rating:4.6,uptime:'96.1%',region:'Singapore, SG',tags:['저비용']},
   {id:'n5',name:'HPC-Seoul-H100',     spec:'H100 SXM5 × 8',vram:'80GB×8',pricePerHour:4.00,rating:5.0,uptime:'99.9%',region:'Seoul, KR',   tags:['최고 성능']},
@@ -346,7 +346,7 @@ function Sidebar({ activeTab, onSelect, expanded, onToggle, onLogout }) {
         <div className="w-9 h-9 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center shadow-sm shadow-sky-200 flex-shrink-0">
           <Zap size={17} className="text-white"/>
         </div>
-        <span className="text-[18px] font-bold text-slate-900 tracking-tight">Link<span className="g-text">Node</span></span>
+        <span className="text-[18px] font-bold text-slate-900 tracking-tight">GP<span className="g-text">UB</span></span>
       </button>
       <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">메뉴</p>
@@ -1245,7 +1245,7 @@ function NodeManageView({ onNavigate }) {
   );
 }
 
-// ── Node Create (LinkNode Agent) ──────────────────────────────────────
+// ── Node Create (GPUB Agent) ──────────────────────────────────────
 function NodeCreateView({ onNavigate }) {
   const [agentStatus, setAgentStatus] = useState('idle'); // idle | sharing | running
   const [assignedUser, setAssignedUser] = useState(null);
@@ -1274,7 +1274,7 @@ function NodeCreateView({ onNavigate }) {
     {
       num:3, label:'Login', emoji:'🔐',
       bg:'from-emerald-400 to-emerald-600', lightBg:'bg-emerald-50', border:'border-emerald-200',
-      desc:'login 버튼을 클릭하여 LinkNode 계정으로 로그인합니다. 로그인시, GPU가 자동으로 감지 및 등록됩니다.',
+      desc:'login 버튼을 클릭하여 GPUB 계정으로 로그인합니다. 로그인시, GPU가 자동으로 감지 및 등록됩니다.',
     },
     {
       num:4, label:'Start', emoji:'🚀',
@@ -1285,7 +1285,7 @@ function NodeCreateView({ onNavigate }) {
 
   return (
     <main className="flex-1 overflow-y-auto">
-      <PageHeader title="노드 생성" desc="LinkNode 에이전트로 내 GPU를 공유하고 수익을 창출하세요"/>
+      <PageHeader title="노드 생성" desc="GPUB 에이전트로 내 GPU를 공유하고 수익을 창출하세요"/>
       <div className="px-10 py-7 space-y-7 max-w-5xl">
 
         {/* Notice banner */}
@@ -1305,12 +1305,12 @@ function NodeCreateView({ onNavigate }) {
                 <Zap size={22} className="text-white"/>
               </div>
               <div>
-                <p className="text-white font-bold text-xl">LinkNode Agent</p>
+                <p className="text-white font-bold text-xl">GPUB Agent</p>
                 <p className="text-slate-400 text-sm">v2.1.0 · Windows / macOS / Linux</p>
               </div>
             </div>
             <p className="text-slate-300 text-sm max-w-md leading-relaxed">
-              내 PC의 GPU를 LinkNode 네트워크에 공유하고<br/>
+              내 PC의 GPU를 GPUB 네트워크에 공유하고<br/>
               유휴 GPU로 수익을 창출하세요.
             </p>
           </div>
@@ -1353,7 +1353,7 @@ function NodeCreateView({ onNavigate }) {
 
         {/* Step guide */}
         <div>
-          <h2 className="text-lg font-bold text-slate-800 mb-1">LinkNode Agent 사용 방법</h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-1">GPUB Agent 사용 방법</h2>
           <p className="text-sm text-slate-500 mb-6">아래 단계를 따라 에이전트를 설치하고 공유를 시작하세요</p>
 
           <div className="grid grid-cols-4 gap-4">
@@ -1470,7 +1470,7 @@ function LoginView({ onLogin }) {
           <div className="w-14 h-14 bg-gradient-to-br from-sky-400 to-sky-600 rounded-2xl flex items-center justify-center shadow-md mb-4">
             <Zap size={26} className="text-white"/>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Link<span className="g-text">Node</span></h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">GP<span className="g-text">UB</span></h1>
           <p className="text-sm text-slate-400 mt-1.5 text-center">GPU 렌탈 네트워크에 오신 것을 환영합니다</p>
         </div>
         <div className="space-y-2.5">
@@ -1507,7 +1507,7 @@ function LoginView({ onLogin }) {
           </button>
         </div>
         <p className="text-center text-xs text-slate-400 mt-6 leading-relaxed">
-          로그인 시 LinkNode의 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
+          로그인 시 GPUB의 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
         </p>
       </div>
     </div>
